@@ -562,6 +562,31 @@ app.put('/api/admin/interviews/:id', authMiddleware, requireRole('INTERVIEWER'),
 }
 );
 
+// Delete an interview
+app.delete('/api/admin/interviews/:id', authMiddleware, requireRole('INTERVIEWER'), async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    // Attempt to delete the interview from the database
+    // Note: Ensure your Prisma Schema has 'onDelete: Cascade' for relations 
+    // (MediaRecords, ProctorEvents) or this might fail if data exists.
+    await prisma.interview.delete({
+      where: { id },
+    });
+
+    res.json({ ok: true, message: 'Interview deleted successfully' });
+  } catch (e: any) {
+    console.error('Delete interview error', e);
+    
+    // P2025 is the Prisma error code for "Record to delete does not exist"
+    if (e.code === 'P2025') {
+      return res.status(404).json({ error: 'Interview not found' });
+    }
+    
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
 // ======================
 // Candidate: by candidateId (legacy / optional)
 // ======================

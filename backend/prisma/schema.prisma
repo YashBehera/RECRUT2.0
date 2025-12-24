@@ -74,7 +74,7 @@ model Interview {
 model ProctorEvent {
   id          String    @id @default(cuid())
   interviewId String
-  interview   Interview @relation(fields: [interviewId], references: [id])
+  interview   Interview @relation(fields: [interviewId], references: [id] , onDelete: Cascade)
   type        String
   payload     Json
   createdAt   DateTime  @default(now())
@@ -83,7 +83,7 @@ model ProctorEvent {
 model ProctorFrame {
   id          String    @id @default(cuid())
   interviewId String
-  interview   Interview @relation(fields: [interviewId], references: [id])
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
   path        String    // local file path
   createdAt   DateTime  @default(now())
 }
@@ -91,7 +91,7 @@ model ProctorFrame {
 model MediaRecord {
   id              String     @id @default(cuid())
   interviewId     String
-  interview       Interview  @relation(fields: [interviewId], references: [id])
+  interview       Interview  @relation(fields: [interviewId], references: [id] , onDelete: Cascade )
 
   // 'audio' | 'video' | 'frame'
   type            String

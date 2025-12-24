@@ -293,7 +293,6 @@
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     border-bottom: 0.5px solid var(--border-secondary);
-    width: 100%;
   }
   
   @media (prefers-color-scheme: dark) {
@@ -685,7 +684,7 @@
     flex-direction: column;
     max-width: var(--container-max);
     margin: 0 auto;
-    width: 100%;
+    min-width: 100vw;
   }
   
   /* Alert Banner */
@@ -802,11 +801,12 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-width: 100vw;
   }
   
   @media (min-width: 1024px) {
     .apple-panel--question {
-      max-width: 50%;
+      max-width: 100%;
       min-width: var(--panel-min-width);
     }
     
@@ -829,7 +829,9 @@
   }
   
   .apple-panel--sidebar {
-    display: none;
+    display: flex;
+    justify-content: flex-end;
+
   }
   
   @media (min-width: 1024px) {
@@ -1965,5 +1967,4 @@
       bottom: max(var(--space-6), calc(env(safe-area-inset-bottom) + var(--space-4)));
     }
   }
-
   

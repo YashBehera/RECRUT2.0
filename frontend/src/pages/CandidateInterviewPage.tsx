@@ -972,26 +972,6 @@ export function CandidateInterviewPage() {
             ) : (
               /* Camera & Tips Panel */
               <aside className="apple-panel apple-panel--sidebar">
-                {/* Camera Preview */}
-                <div className="apple-camera">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="apple-camera__video"
-                  />
-                  <div className="apple-camera__overlay">
-                    <div className="apple-camera__rec">
-                      <span className="apple-camera__dot" />
-                      <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  </div>
-                  <div className="apple-camera__label">
-                    <Icons.Eye />
-                    <span>AI Proctoring Active</span>
-                  </div>
-                </div>
 
                 {/* Guidelines */}
                 <div className="apple-card">

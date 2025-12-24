@@ -1,24 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import {
-  ChevronDown,
-  Briefcase,
-  User,
-  Calendar,
-  Plus,
-  Clock,
-  ChevronRight,
-  Search,
-  Save,
-  Menu,
-  X,
-  Loader2,
-  Check,
-  Sparkles,
-  Trash2
-} from 'lucide-react';
-import { cn } from '../lib/utils'; // Utility function for conditional classes
+import './AdminDashboardPage.css';
 
 type CodingMode = 'leetcode' | 'ai';
 
@@ -32,18 +15,12 @@ type Question = {
   text: string;
   type: 'text' | 'audio' | 'code' | 'mcq';
   durationSec: number;
-
-  // === CODE SPECIFIC ===
   codingMode?: CodingMode;
-
-  // LeetCode style
   description?: string;
   language?: string;
   options?: string[];
   testCases?: TestCase[];
   hiddenTestCases?: TestCase[];
-
-  // AI style
   aiConfig?: {
     difficulty: 'easy' | 'medium' | 'hard';
     dataStructure: string;
@@ -51,7 +28,6 @@ type Question = {
     promptHint: string;
   };
 };
-
 
 type ProctorConfig = {
   heartbeatMs: number;
@@ -91,25 +67,156 @@ type CandidateUser = {
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
 
-// --- Loading Component ---
-const LoadingSpinner = ({ size = 'default', className }: {
-  size?: 'sm' | 'default' | 'lg';
-  className?: string;
-}) => {
-  const sizeClasses = {
-    sm: 'size-4',
-    default: 'size-6',
-    lg: 'size-8'
-  };
+// ============================================
+// ICON COMPONENTS
+// ============================================
 
-  return (
-    <div className={cn("flex items-center justify-center py-8 sm:py-12", className)}>
-      <Loader2 className={cn("animate-spin text-blue-500", sizeClasses[size])} />
-    </div>
-  );
+const Icons = {
+  Sparkles: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 3l1.09 3.41L16.5 7.5l-3.41 1.09L12 12l-1.09-3.41L7.5 7.5l3.41-1.09L12 3zm6.5 9l.72 2.28L21.5 15l-2.28.72-.72 2.28-.72-2.28L15.5 15l2.28-.72.72-2.28zM5.5 15l.72 2.28L8.5 18l-2.28.72-.72 2.28-.72-2.28L2.5 18l2.28-.72.72-2.28z" />
+    </svg>
+  ),
+  Menu: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  ),
+  X: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  ),
+  Briefcase: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  ),
+  Calendar: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  ),
+  Plus: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  ),
+  Clock: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12,6 12,12 16,14" />
+    </svg>
+  ),
+  ChevronRight: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9,18 15,12 9,6" />
+    </svg>
+  ),
+  ChevronDown: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6,9 12,15 18,9" />
+    </svg>
+  ),
+  Search: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  ),
+  Save: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+      <polyline points="17,21 17,13 7,13 7,21" />
+      <polyline points="7,3 7,8 15,8" />
+    </svg>
+  ),
+  Check: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20,6 9,17 4,12" />
+    </svg>
+  ),
+  Trash: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3,6 5,6 21,6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  ),
+  User: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
+  LogOut: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16,17 21,12 16,7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  ),
+  Code: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="16,18 22,12 16,6" />
+      <polyline points="8,6 2,12 8,18" />
+    </svg>
+  ),
+  Mic: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z" />
+    </svg>
+  ),
+  CheckCircle: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+    </svg>
+  ),
+  AlertCircle: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  ),
+  Wand: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 4V2" />
+      <path d="M15 16v-2" />
+      <path d="M8 9h2" />
+      <path d="M20 9h2" />
+      <path d="M17.8 11.8L19 13" />
+      <path d="M15 9h0" />
+      <path d="M17.8 6.2L19 5" />
+      <path d="M3 21l9-9" />
+      <path d="M12.2 6.2L11 5" />
+    </svg>
+  ),
 };
 
-// --- Enhanced Toast Notification ---
+// ============================================
+// LOADING SPINNER
+// ============================================
+
+const LoadingSpinner = ({ size = 'default' }: { size?: 'sm' | 'default' | 'lg' }) => (
+  <div className={`admin-spinner admin-spinner--${size}`}>
+    <div className="admin-spinner__ring" />
+  </div>
+);
+
+// ============================================
+// TOAST COMPONENT
+// ============================================
+
 const Toast = ({
   message,
   type,
@@ -124,87 +231,33 @@ const Toast = ({
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const config = {
-    success: {
-      bg: 'bg-emerald-50/90',
-      border: 'border-emerald-200/50',
-      text: 'text-emerald-800',
-      icon: 'text-emerald-500'
-    },
-    error: {
-      bg: 'bg-red-50/90',
-      border: 'border-red-200/50',
-      text: 'text-red-800',
-      icon: 'text-red-500'
-    },
-    info: {
-      bg: 'bg-blue-50/90',
-      border: 'border-blue-200/50',
-      text: 'text-blue-800',
-      icon: 'text-blue-500'
-    }
-  }[type];
-
-  const IconComponent = type === 'success' ? Check : type === 'error' ? X : Sparkles;
-
   return (
-    <div className={cn(
-      "fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] max-w-sm",
-      "backdrop-blur-xl border rounded-2xl p-4 shadow-2xl",
-      "animate-in slide-in-from-right-full duration-300",
-      config.bg,
-      config.border,
-      config.text
-    )}>
-      <div className="flex items-start gap-3">
-        <IconComponent className={cn("mt-0.5 size-5 shrink-0", config.icon)} />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium leading-5 wrap-break-words">{message}</p>
-        </div>
-        <button
-          onClick={onClose}
-          className={cn(
-            "shrink-0 p-0.5 rounded-lg transition-opacity hover:opacity-70 hover:bg-black/5",
-            config.icon
-          )}
-          aria-label="Close notification"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
+    <div className={`admin-toast admin-toast--${type}`}>
+      <span className="admin-toast__icon">
+        {type === 'success' ? <Icons.Check /> : type === 'error' ? <Icons.X /> : <Icons.Sparkles />}
+      </span>
+      <p className="admin-toast__message">{message}</p>
+      <button onClick={onClose} className="admin-toast__close" aria-label="Close">
+        <Icons.X />
+      </button>
     </div>
   );
 };
 
-// --- Status Badge Component ---
-const StatusBadge = ({ status }: { status: string }) => {
-  const variants = {
-    scheduled: "bg-blue-50 text-blue-700 border-blue-200",
-    completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    cancelled: "bg-red-50 text-red-700 border-red-200",
-    default: "bg-gray-50 text-gray-700 border-gray-200"
-  };
+// ============================================
+// STATUS BADGE
+// ============================================
 
-  const dotVariants = {
-    scheduled: "bg-blue-500",
-    completed: "bg-emerald-500",
-    cancelled: "bg-red-500",
-    default: "bg-gray-500"
-  };
+const StatusBadge = ({ status }: { status: string }) => (
+  <span className={`admin-status-badge admin-status-badge--${status}`}>
+    <span className="admin-status-badge__dot" />
+    {status.charAt(0).toUpperCase() + status.slice(1)}
+  </span>
+);
 
-  const variant = variants[status as keyof typeof variants] || variants.default;
-  const dotVariant = dotVariants[status as keyof typeof dotVariants] || dotVariants.default;
-
-  return (
-    <span className={cn(
-      "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border",
-      variant
-    )}>
-      <div className={cn("size-2 rounded-full shrink-0", dotVariant)} />
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-};
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 export function AdminDashboardPage() {
   const { user, token, logout } = useAuth();
@@ -255,8 +308,11 @@ export function AdminDashboardPage() {
   const [candidateResults, setCandidateResults] = useState<CandidateUser[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateUser | null>(null);
-
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
+
+  // Add this state for delete confirmation modal
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // --- Effects ---
   useEffect(() => {
@@ -266,7 +322,6 @@ export function AdminDashboardPage() {
     }
   }, [token]);
 
-  // Close mobile menu on window resize
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
@@ -280,7 +335,6 @@ export function AdminDashboardPage() {
   // --- Data Loaders ---
   const loadTemplates = useCallback(async () => {
     if (!token) return;
-
     setLoading(prev => ({ ...prev, templates: true }));
     try {
       const res = await fetch(`${API_BASE}/api/admin/templates`, {
@@ -302,7 +356,6 @@ export function AdminDashboardPage() {
 
   const loadInterviews = useCallback(async () => {
     if (!token) return;
-
     setLoading(prev => ({ ...prev, interviews: true }));
     try {
       const res = await fetch(`${API_BASE}/api/admin/interviews`, {
@@ -363,6 +416,33 @@ export function AdminDashboardPage() {
     setQuestions(prev => prev.filter((_, i) => i !== idx));
   };
 
+  // Delete interview handler
+  const handleDeleteInterview = useCallback(async (interviewId: string) => {
+    if (!token) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/interviews/${interviewId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setToast({ message: 'Interview deleted successfully', type: 'success' });
+        setInterviews(prev => prev.filter(iv => iv.id !== interviewId));
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        setToast({ message: errorData.error || 'Failed to delete interview', type: 'error' });
+      }
+    } catch (err) {
+      console.error('Delete interview error:', err);
+      setToast({ message: 'Network error deleting interview', type: 'error' });
+    } finally {
+      setDeleting(false);
+      setDeleteConfirm(null);
+    }
+  }, [token]);
+
   const updateQuestion = (idx: number, field: keyof Question, val: any) => {
     setQuestions(prev => prev.map((q, i) =>
       i === idx ? { ...q, [field]: val } : q
@@ -386,11 +466,21 @@ export function AdminDashboardPage() {
 
     setLoading(prev => ({ ...prev, submit: true }));
 
+    try {
+      questions.forEach(q => {
+        if (q.type === 'code' && q.codingMode === 'leetcode') {
+          JSON.stringify(q.testCases ?? []);
+          JSON.stringify(q.hiddenTestCases ?? []);
+        }
+      });
+    } catch {
+      setToast({ message: "Invalid JSON in test cases.", type: "error" });
+      setLoading(prev => ({ ...prev, submit: false }));
+      return;
+    }
+
     const finalConfig = {
-      questions: questions.map(q => ({
-        ...q,
-        text: q.text.trim(),
-      })),
+      questions: questions.map(q => ({ ...q, text: q.text.trim() })),
       proctor: proctorConfig
     };
 
@@ -426,23 +516,6 @@ export function AdminDashboardPage() {
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
-
-    try {
-      questions.forEach(q => {
-        if (q.type === 'code' && q.codingMode === 'leetcode') {
-          JSON.stringify(q.testCases ?? []);
-          JSON.stringify(q.hiddenTestCases ?? []);
-        }
-      });
-    } catch {
-      setToast({
-        message: "Invalid JSON in test cases. Please fix before saving.",
-        type: "error"
-      });
-      setLoading(prev => ({ ...prev, submit: false }));
-      return;
-    }
-    
   };
 
   const handleScheduleInterview = async (e: React.FormEvent) => {
@@ -484,33 +557,54 @@ export function AdminDashboardPage() {
     }
   };
 
+  const handleGenerateAI = async (idx: number, questionId: string, aiConfig: any) => {
+    try {
+      setAiLoading(prev => ({ ...prev, [questionId]: true }));
+      setToast({ message: "Generating question with AI...", type: "info" });
+
+      const res = await fetch(`${API_BASE}/api/admin/ai-generate-question`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(aiConfig)
+      });
+
+      if (!res.ok) throw new Error("AI generation failed");
+
+      const data = await res.json();
+
+      updateQuestion(idx, 'text', data.title);
+      updateQuestion(idx, 'description', data.description);
+      updateQuestion(idx, 'testCases', data.testCases);
+      updateQuestion(idx, 'hiddenTestCases', data.hiddenTestCases);
+
+      setToast({ message: "AI question generated!", type: "success" });
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "Failed to generate AI question", type: "error" });
+    } finally {
+      setAiLoading(prev => ({ ...prev, [questionId]: false }));
+    }
+  };
+
   // Memoized values
   const upcomingInterviews = useMemo(() =>
-    interviews.filter(i => i.status === 'scheduled').length,
-    [interviews]
-  );
-
+    interviews.filter(i => i.status === 'scheduled').length, [interviews]);
   const totalTemplates = useMemo(() => templates.length, [templates]);
-
-  const tabConfig = useMemo(() => [
-    { key: 'templates', icon: Briefcase, label: 'Templates' },
-    { key: 'interviews', icon: Calendar, label: 'Interviews' }
-  ], []);
 
   // Handle unauthorized access
   if (!user || user.role !== 'INTERVIEWER') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <div className="mx-auto w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-lg sm:p-8">
-          <div className="mb-6 inline-flex size-16 items-center justify-center rounded-full bg-red-50">
-            <X className="size-8 text-red-500" />
+      <div className="admin-access-denied">
+        <div className="admin-access-denied__card">
+          <div className="admin-access-denied__icon">
+            <Icons.X />
           </div>
-          <h2 className="mb-2 text-xl font-semibold text-gray-900 sm:text-2xl">Access Denied</h2>
-          <p className="text-sm text-gray-600 sm:text-base">You don't have permission to view this page.</p>
-          <button
-            onClick={() => window.history.back()}
-            className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-          >
+          <h2 className="admin-access-denied__title">Access Denied</h2>
+          <p className="admin-access-denied__text">You don't have permission to view this page.</p>
+          <button onClick={() => window.history.back()} className="admin-btn admin-btn--primary">
             Go Back
           </button>
         </div>
@@ -519,929 +613,880 @@ export function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 w-screen">
-      {/* Apple-inspired Navbar */}
-      <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-2xl">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between">
-            {/* Logo & User Info */}
-            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="shrink-0 rounded-lg p-2 transition-colors hover:bg-gray-100 lg:hidden"
-                aria-label="Toggle mobile menu"
-              >
-                {mobileMenuOpen ? <X className="size-6" /> : <Menu className="size-6" />}
-              </button>
+    <div className="admin-dashboard">
+      {/* ================================
+          NAVIGATION
+          ================================ */}
+      <header className="admin-nav">
+        <div className="admin-nav__container">
+          {/* Left */}
+          <div className="admin-nav__left">
+            <button
+              className="admin-nav__menu-btn"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <Icons.X /> : <Icons.Menu />}
+            </button>
 
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate text-lg font-semibold text-gray-900 sm:text-xl">
-                  Recrut Admin
-                </h1>
-                <div className="hidden truncate text-xs text-gray-500 sm:block">
-                  {user.name} • {user.email}
-                </div>
+            <div className="admin-nav__brand">
+              <div className="admin-nav__logo">
+                <Icons.Sparkles />
+              </div>
+              <div className="admin-nav__brand-text">
+                <h1 className="admin-nav__title">Admin Dashboard</h1>
+                <p className="admin-nav__subtitle">{user.name}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Center - Stats & Tabs (Desktop) */}
+          <div className="admin-nav__center">
+            <div className="admin-nav__stats">
+              <div className="admin-stat">
+                <span className="admin-stat__dot admin-stat__dot--green" />
+                <span className="admin-stat__text">{totalTemplates} Templates</span>
+              </div>
+              <div className="admin-stat__divider" />
+              <div className="admin-stat">
+                <span className="admin-stat__dot admin-stat__dot--blue" />
+                <span className="admin-stat__text">{upcomingInterviews} Scheduled</span>
               </div>
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden shrink-0 items-center gap-4 lg:flex xl:gap-6">
-              {/* Stats Pills */}
-              <div className="flex items-center gap-3 rounded-full bg-gray-100 px-3 py-2 xl:gap-4 xl:px-4">
-                <div className="flex items-center gap-2">
-                  <div className="size-2 shrink-0 rounded-full bg-emerald-500" />
-                  <span className="whitespace-nowrap text-xs font-medium text-gray-700">
-                    {totalTemplates} Template{totalTemplates !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                <div className="h-4 w-px shrink-0 bg-gray-300" />
-                <div className="flex items-center gap-2">
-                  <div className="size-2 shrink-0 rounded-full bg-blue-500" />
-                  <span className="whitespace-nowrap text-xs font-medium text-gray-700">
-                    {upcomingInterviews} Scheduled
-                  </span>
-                </div>
-              </div>
-
-              {/* Tab Switcher */}
-              <div className="flex rounded-full bg-gray-100 p-1">
-                {tabConfig.map((t) => {
-                  const IconComponent = t.icon;
-                  return (
-                    <button
-                      key={t.key}
-                      onClick={() => setTab(t.key as any)}
-                      className={cn(
-                        "flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-all xl:px-4",
-                        tab === t.key
-                          ? "bg-white text-blue-600 shadow-sm"
-                          : "text-gray-600 hover:text-gray-900"
-                      )}
-                    >
-                      <IconComponent className="size-4" />
-                      <span className="hidden xl:inline">{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
+            <div className="admin-nav__tabs">
               <button
-                onClick={logout}
-                className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-all hover:bg-red-50 hover:text-red-700 xl:px-4"
+                className={`admin-nav__tab ${tab === 'templates' ? 'admin-nav__tab--active' : ''}`}
+                onClick={() => setTab('templates')}
               >
-                Sign Out
+                <Icons.Briefcase />
+                <span>Templates</span>
               </button>
-            </div>
-
-            {/* Mobile Sign Out */}
-            <div className="shrink-0 lg:hidden">
               <button
-                onClick={logout}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition-all hover:bg-red-50 hover:text-red-700"
+                className={`admin-nav__tab ${tab === 'interviews' ? 'admin-nav__tab--active' : ''}`}
+                onClick={() => setTab('interviews')}
               >
-                Sign Out
+                <Icons.Calendar />
+                <span>Interviews</span>
               </button>
             </div>
           </div>
+
+          {/* Right */}
+          <div className="admin-nav__right">
+            <button onClick={logout} className="admin-nav__logout">
+              <Icons.LogOut />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Navigation Menu */}
+        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="border-t border-gray-200 bg-white/95 backdrop-blur-xl lg:hidden">
-            <div className="mx-auto max-w-7xl space-y-4 px-4 py-4">
-              <div className="grid grid-cols-2 gap-2">
-                {tabConfig.map((t) => {
-                  const IconComponent = t.icon;
-                  return (
-                    <button
-                      key={t.key}
-                      onClick={() => {
-                        setTab(t.key as any);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={cn(
-                        "flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-all",
-                        tab === t.key
-                          ? "border border-blue-200 bg-blue-50 text-blue-600"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      )}
-                    >
-                      <IconComponent className="size-4" />
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="admin-mobile-menu">
+            <div className="admin-mobile-menu__tabs">
+              <button
+                className={`admin-mobile-menu__tab ${tab === 'templates' ? 'admin-mobile-menu__tab--active' : ''}`}
+                onClick={() => { setTab('templates'); setMobileMenuOpen(false); }}
+              >
+                <Icons.Briefcase />
+                <span>Templates</span>
+              </button>
+              <button
+                className={`admin-mobile-menu__tab ${tab === 'interviews' ? 'admin-mobile-menu__tab--active' : ''}`}
+                onClick={() => { setTab('interviews'); setMobileMenuOpen(false); }}
+              >
+                <Icons.Calendar />
+                <span>Interviews</span>
+              </button>
+            </div>
 
-              <div className="flex justify-around rounded-xl bg-gray-100 py-4">
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-gray-900">{totalTemplates}</div>
-                  <div className="text-xs font-medium text-gray-500">Templates</div>
-                </div>
-                <div className="w-px bg-gray-300" />
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-gray-900">{upcomingInterviews}</div>
-                  <div className="text-xs font-medium text-gray-500">Scheduled</div>
-                </div>
+            <div className="admin-mobile-menu__stats">
+              <div className="admin-mobile-menu__stat">
+                <span className="admin-mobile-menu__stat-value">{totalTemplates}</span>
+                <span className="admin-mobile-menu__stat-label">Templates</span>
+              </div>
+              <div className="admin-mobile-menu__stat-divider" />
+              <div className="admin-mobile-menu__stat">
+                <span className="admin-mobile-menu__stat-value">{upcomingInterviews}</span>
+                <span className="admin-mobile-menu__stat-label">Scheduled</span>
               </div>
             </div>
           </div>
         )}
       </header>
 
-      <main className="w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-        <div className="mx-auto max-w-7xl">
-          {/* --- TEMPLATES TAB --- */}
+      {/* ================================
+          MAIN CONTENT
+          ================================ */}
+      <main className="admin-main">
+        <div className="admin-main__container">
+
+          {/* ================== TEMPLATES TAB ================== */}
           {tab === 'templates' && (
-            <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
+            <div className="admin-grid">
               {/* Template Creator */}
-              <div className="space-y-6 lg:col-span-7 xl:col-span-8">
-                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
-                  <div className="mb-6 flex flex-col justify-between gap-4 sm:mb-8 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 sm:size-12">
-                        <Plus className="size-5 text-blue-600 sm:size-6" />
+              <section className="admin-panel admin-panel--large">
+                <div className="admin-panel__header">
+                  <div className="admin-panel__header-left">
+                    <div className="admin-panel__icon admin-panel__icon--blue">
+                      <Icons.Plus />
+                    </div>
+                    <div>
+                      <h2 className="admin-panel__title">Create Template</h2>
+                      <p className="admin-panel__subtitle">Design your interview structure</p>
+                    </div>
+                  </div>
+                  <div className="admin-badge">
+                    {questions.length} Question{questions.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+
+                <form onSubmit={handleCreateTemplate} className="admin-form">
+                  {/* Basic Info */}
+                  <div className="admin-form__section">
+                    <div className="admin-form__row">
+                      <div className="admin-input-group">
+                        <label className="admin-label">Template Name</label>
+                        <input
+                          type="text"
+                          required
+                          className="admin-input"
+                          placeholder="Senior Frontend Developer"
+                          value={tplForm.name}
+                          onChange={e => setTplForm({ ...tplForm, name: e.target.value })}
+                        />
                       </div>
-                      <div className="min-w-0">
-                        <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Create Template</h2>
-                        <p className="hidden text-sm text-gray-600 sm:block">Design your interview structure</p>
+                      <div className="admin-input-group">
+                        <label className="admin-label">Experience Level</label>
+                        <select
+                          required
+                          className="admin-select"
+                          value={tplForm.level}
+                          onChange={e => setTplForm({ ...tplForm, level: e.target.value })}
+                        >
+                          <option value="">Select Level...</option>
+                          <option value="junior">Junior (0-2 years)</option>
+                          <option value="mid">Mid-Level (2-5 years)</option>
+                          <option value="senior">Senior (5+ years)</option>
+                          <option value="lead">Lead/Principal</option>
+                        </select>
                       </div>
                     </div>
-                    <div className="shrink-0 rounded-full bg-gray-100 px-3 py-1.5">
-                      <span className="text-xs font-semibold text-gray-700">
-                        {questions.length} Question{questions.length !== 1 ? 's' : ''}
-                      </span>
+
+                    <div className="admin-input-group">
+                      <label className="admin-label">Target Role</label>
+                      <input
+                        type="text"
+                        required
+                        className="admin-input"
+                        placeholder="React Developer, DevOps Engineer"
+                        value={tplForm.role}
+                        onChange={e => setTplForm({ ...tplForm, role: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-input-group">
+                      <label className="admin-label">Description</label>
+                      <textarea
+                        className="admin-textarea"
+                        rows={3}
+                        placeholder="Brief description of the interview..."
+                        value={tplForm.description}
+                        onChange={e => setTplForm({ ...tplForm, description: e.target.value })}
+                      />
                     </div>
                   </div>
 
-                  <form onSubmit={handleCreateTemplate} className="space-y-6 sm:space-y-8">
-                    {/* Basic Template Info */}
-                    <div className="space-y-4 sm:space-y-6">
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-900">Template Name</label>
+                  {/* Proctor Config */}
+                  <div className="admin-proctor-config">
+                    <h3 className="admin-proctor-config__title">
+                      <Icons.Clock />
+                      <span>Proctor Configuration</span>
+                    </h3>
+                    <div className="admin-proctor-config__grid">
+                      <div className="admin-input-group">
+                        <label className="admin-label admin-label--sm">Heartbeat Interval</label>
+                        <div className="admin-input-with-suffix">
                           <input
-                            required
-                            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-500 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                            placeholder="Senior Frontend Developer"
-                            value={tplForm.name}
-                            onChange={e => setTplForm({ ...tplForm, name: e.target.value })}
-                            maxLength={100}
+                            type="number"
+                            min="1000"
+                            max="60000"
+                            step="1000"
+                            className="admin-input admin-input--sm"
+                            value={proctorConfig.heartbeatMs}
+                            onChange={e => updateProctor('heartbeatMs', parseInt(e.target.value) || 5000)}
                           />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-900">Experience Level</label>
-                          <select
-                            required
-                            className="w-full cursor-pointer appearance-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                            value={tplForm.level}
-                            onChange={e => setTplForm({ ...tplForm, level: e.target.value })}
-                          >
-                            <option value="">Select Level...</option>
-                            <option value="junior">Junior (0-2 years)</option>
-                            <option value="mid">Mid-Level (2-5 years)</option>
-                            <option value="senior">Senior (5+ years)</option>
-                            <option value="lead">Lead/Principal</option>
-                          </select>
+                          <span className="admin-input-suffix">ms</span>
                         </div>
                       </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-900">Target Role</label>
-                        <input
-                          required
-                          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-500 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                          placeholder="React Developer, DevOps Engineer"
-                          value={tplForm.role}
-                          onChange={e => setTplForm({ ...tplForm, role: e.target.value })}
-                          maxLength={100}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-900">Description</label>
-                        <textarea
-                          className="w-full resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-500 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                          rows={3}
-                          placeholder="Brief description of the interview structure and goals..."
-                          value={tplForm.description}
-                          onChange={e => setTplForm({ ...tplForm, description: e.target.value })}
-                          maxLength={500}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Proctor Configuration */}
-                    <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 sm:p-6">
-                      <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-indigo-900">
-                        <Clock className="shrink-0 text-indigo-600" />
-                        Proctor Configuration
-                      </h3>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div className="space-y-2">
-                          <label className="block text-xs font-semibold text-indigo-700">Heartbeat Interval</label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min="1000"
-                              max="60000"
-                              step="1000"
-                              className="w-full rounded-lg border border-indigo-300 bg-white px-3 py-2 pr-12 text-sm text-gray-900 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                              value={proctorConfig.heartbeatMs}
-                              onChange={e => updateProctor('heartbeatMs', parseInt(e.target.value) || 5000)}
-                            />
-                            <span className="pointer-events-none absolute right-3 top-2.5 text-xs font-medium text-gray-500">ms</span>
-                          </div>
+                      <div className="admin-input-group">
+                        <label className="admin-label admin-label--sm">Frame Capture</label>
+                        <div className="admin-input-with-suffix">
+                          <input
+                            type="number"
+                            min="1000"
+                            max="60000"
+                            step="1000"
+                            className="admin-input admin-input--sm"
+                            value={proctorConfig.frameIntervalMs}
+                            onChange={e => updateProctor('frameIntervalMs', parseInt(e.target.value) || 5000)}
+                          />
+                          <span className="admin-input-suffix">ms</span>
                         </div>
-                        <div className="space-y-2">
-                          <label className="block text-xs font-semibold text-indigo-700">Frame Capture Rate</label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min="1000"
-                              max="60000"
-                              step="1000"
-                              className="w-full rounded-lg border border-indigo-300 bg-white px-3 py-2 pr-12 text-sm text-gray-900 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                              value={proctorConfig.frameIntervalMs}
-                              onChange={e => updateProctor('frameIntervalMs', parseInt(e.target.value) || 5000)}
-                            />
-                            <span className="pointer-events-none absolute right-3 top-2.5 text-xs font-medium text-gray-500">ms</span>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-xs font-semibold text-indigo-700">Focus Loss Limit</label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min="1"
-                              max="10"
-                              className="w-full rounded-lg border border-indigo-300 bg-white px-3 py-2 pr-16 text-sm text-gray-900 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                              value={proctorConfig.focusLossThreshold}
-                              onChange={e => updateProctor('focusLossThreshold', parseInt(e.target.value) || 3)}
-                            />
-                            <span className="pointer-events-none absolute right-3 top-2.5 text-xs font-medium text-gray-500">strikes</span>
-                          </div>
+                      </div>
+                      <div className="admin-input-group">
+                        <label className="admin-label admin-label--sm">Focus Loss Limit</label>
+                        <div className="admin-input-with-suffix">
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            className="admin-input admin-input--sm"
+                            value={proctorConfig.focusLossThreshold}
+                            onChange={e => updateProctor('focusLossThreshold', parseInt(e.target.value) || 3)}
+                          />
+                          <span className="admin-input-suffix">strikes</span>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Questions Builder */}
-                    <div className="space-y-4">
-                      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                        <h3 className="text-lg font-semibold text-gray-900">Interview Questions</h3>
-                        <button
-                          type="button"
-                          onClick={addQuestion}
-                          className="flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-black shadow-sm transition-all hover:bg-blue-700 hover:shadow-md active:scale-95 sm:self-auto"
-                        >
-                          <Plus className="size-4" />
-                          Add Question
-                        </button>
-                      </div>
+                  {/* Questions Builder */}
+                  <div className="admin-questions">
+                    <div className="admin-questions__header">
+                      <h3 className="admin-questions__title">Interview Questions</h3>
+                      <button
+                        type="button"
+                        onClick={addQuestion}
+                        className="admin-btn admin-btn--primary admin-btn--sm"
+                      >
+                        <Icons.Plus />
+                        <span>Add Question</span>
+                      </button>
+                    </div>
 
-                      <div className="max-h-[500px] space-y-4 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 scrollbar-thumb-rounded-full hover:scrollbar-thumb-gray-400 p-5">
-                        {questions.map((q, idx) => (
-                          <div
-                            key={q.id}
-                            className="group relative rounded-2xl border border-gray-200 bg-gray-50 p-4 transition-all hover:bg-gray-100 sm:p-6"
-                          >
-                            {/* Question Number */}
-                            <div className="absolute -left-2 top-4 flex size-6 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white shadow-lg sm:-left-3 sm:top-6 sm:size-8 sm:text-sm">
-                              {idx + 1}
+                    <div className="admin-questions__list">
+                      {questions.map((q, idx) => (
+                        <div key={q.id} className="admin-question-card">
+                          <span className="admin-question-card__number">{idx + 1}</span>
+
+                          {questions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeQuestion(idx)}
+                              className="admin-question-card__delete"
+                              aria-label="Delete question"
+                            >
+                              <Icons.Trash />
+                            </button>
+                          )}
+
+                          <div className="admin-question-card__content">
+                            <div className="admin-question-card__row">
+                              <select
+                                className="admin-select"
+                                value={q.type}
+                                onChange={e => updateQuestion(idx, 'type', e.target.value)}
+                              >
+                                <option value="text">✏️ Text Response</option>
+                                <option value="audio">🎤 Voice Response</option>
+                                <option value="mcq">☑️ Multiple Choice</option>
+                                <option value="code">💻 Code Challenge</option>
+                              </select>
+
+                              <div className="admin-duration-input">
+                                <Icons.Clock />
+                                <input
+                                  type="number"
+                                  min="10"
+                                  max="600"
+                                  className="admin-duration-input__field"
+                                  value={q.durationSec}
+                                  onChange={e => updateQuestion(idx, 'durationSec', parseInt(e.target.value) || 60)}
+                                />
+                                <span>sec</span>
+                              </div>
                             </div>
 
-                            {/* Delete Button */}
-                            {questions.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeQuestion(idx)}
-                                className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 sm:right-4 sm:top-4 sm:p-2"
-                                aria-label={`Delete question ${idx + 1}`}
-                              >
-                                <Trash2 className="size-4" />
-                              </button>
-                            )}
+                            <textarea
+                              required
+                              className="admin-textarea"
+                              rows={3}
+                              placeholder="Enter your question here..."
+                              value={q.text}
+                              onChange={e => updateQuestion(idx, 'text', e.target.value)}
+                            />
 
-                            <div className="ml-3 space-y-4 pr-8 sm:ml-4 sm:pr-10">
-                              {/* Question Type and Duration */}
-                              <div className="flex flex-col gap-3 sm:flex-row">
-                                <select
-                                  className="min-w-0 flex-1 cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                                  value={q.type}
-                                  onChange={e => updateQuestion(idx, 'type', e.target.value)}
-                                >
-                                  <option value="text">✏️ Text Response</option>
-                                  <option value="audio">🎤 Voice Response</option>
-                                  <option value="mcq">☑️ Multiple Choice</option>
-                                  <option value="code">💻 Code Challenge</option>
-                                </select>
-
-                                <div className="flex w-full items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 sm:w-auto">
-                                  <Clock className="shrink-0 text-gray-500" />
-                                  <input
-                                    type="number"
-                                    min="10"
-                                    max="600"
-                                    className="w-16 bg-transparent text-sm text-gray-900 outline-none"
-                                    value={q.durationSec}
-                                    onChange={e => updateQuestion(idx, 'durationSec', parseInt(e.target.value) || 60)}
-                                  />
-                                  <span className="whitespace-nowrap text-xs font-medium text-gray-500">sec</span>
+                            {/* Code Question Options */}
+                            {q.type === 'code' && (
+                              <div className="admin-code-config">
+                                <div className="admin-input-group">
+                                  <label className="admin-label admin-label--sm">Coding Type</label>
+                                  <select
+                                    className="admin-select"
+                                    value={q.codingMode || 'leetcode'}
+                                    onChange={e => {
+                                      const mode = e.target.value as CodingMode;
+                                      updateQuestion(idx, 'codingMode', mode);
+                                      if (mode === 'ai') {
+                                        updateQuestion(idx, 'aiConfig', {
+                                          difficulty: 'medium',
+                                          dataStructure: '',
+                                          algorithm: '',
+                                          promptHint: ''
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <option value="leetcode">🧩 LeetCode Style</option>
+                                    <option value="ai">🤖 AI Generated</option>
+                                  </select>
                                 </div>
-                              </div>
 
-                              {/* Question Text */}
-                              <textarea
-                                required
-                                className="w-full resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-500 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                                rows={3}
-                                placeholder="Enter your question here..."
-                                value={q.text}
-                                onChange={e => updateQuestion(idx, 'text', e.target.value)}
-                                maxLength={1000}
-                              />
+                                {q.codingMode === 'leetcode' && (
+                                  <>
+                                    <div className="admin-input-group">
+                                      <label className="admin-label admin-label--sm">Description</label>
+                                      <textarea
+                                        className="admin-textarea admin-textarea--sm"
+                                        placeholder="Problem description..."
+                                        value={q.description || ''}
+                                        onChange={e => updateQuestion(idx, 'description', e.target.value)}
+                                      />
+                                    </div>
 
-                              {q.type === 'code' && (
-                                <div className="border-l-2 border-purple-500 pl-4">
-                                  {/* Coding Mode */}
-                                  <div>
-                                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                      Coding Question Type
-                                    </label>
-                                    <select
-                                      className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm"
-                                      value={q.codingMode || 'leetcode'}
-                                      onChange={e => {
-                                        const mode = e.target.value as CodingMode;
-                                        updateQuestion(idx, 'codingMode', mode);
+                                    <div className="admin-input-group">
+                                      <label className="admin-label admin-label--sm">Language</label>
+                                      <select
+                                        className="admin-select"
+                                        value={q.language || 'javascript'}
+                                        onChange={e => updateQuestion(idx, 'language', e.target.value)}
+                                      >
+                                        <option value="javascript">JavaScript</option>
+                                        <option value="typescript">TypeScript</option>
+                                        <option value="python">Python</option>
+                                        <option value="java">Java</option>
+                                        <option value="cpp">C++</option>
+                                      </select>
+                                    </div>
 
-                                        if (mode === 'ai') {
-                                          updateQuestion(idx, 'aiConfig', {
-                                            difficulty: 'medium',
-                                            dataStructure: '',
-                                            algorithm: '',
-                                            promptHint: ''
-                                          });
-                                        }
-                                      }}
-                                    >
-                                      <option value="leetcode">🧩 LeetCode Style</option>
-                                      <option value="ai">🤖 AI Generated</option>
-                                    </select>
-                                    {q.codingMode === 'leetcode' && (
-                                      <>
-                                        {/* Problem Description */}
-                                        <textarea
-                                          className="w-full rounded-xl border px-4 py-3 text-sm"
-                                          placeholder="Problem description (shown to candidate)"
-                                          value={q.description || ''}
-                                          onChange={e => updateQuestion(idx, 'description', e.target.value)}
-                                        />
+                                    <div className="admin-input-group">
+                                      <label className="admin-label admin-label--sm">Public Test Cases (JSON)</label>
+                                      <textarea
+                                        className="admin-textarea admin-textarea--mono"
+                                        placeholder='[{ "input": "[1,2]", "output": "3" }]'
+                                        value={JSON.stringify(q.testCases || [], null, 2)}
+                                        onChange={e => {
+                                          try {
+                                            updateQuestion(idx, 'testCases', JSON.parse(e.target.value));
+                                          } catch { }
+                                        }}
+                                      />
+                                    </div>
 
-                                        {/* Language */}
+                                    <div className="admin-input-group">
+                                      <label className="admin-label admin-label--sm">Hidden Test Cases (JSON)</label>
+                                      <textarea
+                                        className="admin-textarea admin-textarea--mono"
+                                        placeholder='[{ "input": "[5,7]", "output": "12" }]'
+                                        value={JSON.stringify(q.hiddenTestCases || [], null, 2)}
+                                        onChange={e => {
+                                          try {
+                                            updateQuestion(idx, 'hiddenTestCases', JSON.parse(e.target.value));
+                                          } catch { }
+                                        }}
+                                      />
+                                    </div>
+                                  </>
+                                )}
+
+                                {q.codingMode === 'ai' && (
+                                  <>
+                                    <div className="admin-form__row">
+                                      <div className="admin-input-group">
+                                        <label className="admin-label admin-label--sm">Difficulty</label>
                                         <select
-                                          className="w-full rounded-xl border px-4 py-2.5 text-sm"
-                                          value={q.language || 'javascript'}
-                                          onChange={e => updateQuestion(idx, 'language', e.target.value)}
-                                        >
-                                          <option value="javascript">JavaScript</option>
-                                          <option value="typescript">TypeScript</option>
-                                          <option value="python">Python</option>
-                                          <option value="java">Java</option>
-                                          <option value="cpp">C++</option>
-                                        </select>
-
-                                        {/* Public Test Cases */}
-                                        <textarea
-                                          className="w-full rounded-xl border px-4 py-3 text-sm font-mono"
-                                          placeholder={`Public Test Cases (JSON)\n[{ "input": "[1,2]", "output": "3" }]`}
-                                          value={JSON.stringify(q.testCases || [], null, 2)}
-                                          onChange={e => {
-                                            try {
-                                              const parsed = JSON.parse(e.target.value);
-                                              updateQuestion(idx, 'testCases', parsed);
-                                            } catch {
-                                              // silently ignore while typing
-                                            }
-                                          }}
-                                        />
-
-                                        {/* Hidden Test Cases */}
-                                        <textarea
-                                          className="w-full rounded-xl border px-4 py-3 text-sm font-mono"
-                                          placeholder={`Hidden Test Cases (JSON)\n[{ "input": "[5,7]", "output": "12" }]`}
-                                          value={JSON.stringify(q.hiddenTestCases || [], null, 2)}
-                                          onChange={e => {
-                                            try {
-                                              const parsed = JSON.parse(e.target.value);
-                                              updateQuestion(idx, 'hiddenTestCases', parsed);
-                                            } catch {
-                                              // silently ignore while typing
-                                            }
-                                          }}
-
-                                        />
-                                      </>
-                                    )}
-                                    {q.codingMode === 'ai' && (
-                                      <>
-                                        <select
-                                          className="w-full rounded-xl border px-4 py-2.5 text-sm"
+                                          className="admin-select"
                                           value={q.aiConfig?.difficulty || 'medium'}
-                                          onChange={e =>
-                                            updateQuestion(idx, 'aiConfig', {
-                                              ...q.aiConfig,
-                                              difficulty: e.target.value
-                                            })
-                                          }
+                                          onChange={e => updateQuestion(idx, 'aiConfig', {
+                                            ...q.aiConfig,
+                                            difficulty: e.target.value
+                                          })}
                                         >
                                           <option value="easy">Easy</option>
                                           <option value="medium">Medium</option>
                                           <option value="hard">Hard</option>
                                         </select>
-
+                                      </div>
+                                      <div className="admin-input-group">
+                                        <label className="admin-label admin-label--sm">Data Structure</label>
                                         <input
-                                          className="w-full rounded-xl border px-4 py-2.5 text-sm"
-                                          placeholder="Data Structure (e.g. Array, Tree, Graph)"
+                                          type="text"
+                                          className="admin-input admin-input--sm"
+                                          placeholder="Array, Tree, Graph..."
                                           value={q.aiConfig?.dataStructure || ''}
-                                          onChange={e =>
-                                            updateQuestion(idx, 'aiConfig', {
-                                              ...q.aiConfig,
-                                              dataStructure: e.target.value
-                                            })
-                                          }
+                                          onChange={e => updateQuestion(idx, 'aiConfig', {
+                                            ...q.aiConfig,
+                                            dataStructure: e.target.value
+                                          })}
                                         />
+                                      </div>
+                                    </div>
 
-                                        <input
-                                          className="w-full rounded-xl border px-4 py-2.5 text-sm"
-                                          placeholder="Algorithm (e.g. BFS, DP, Binary Search)"
-                                          value={q.aiConfig?.algorithm || ''}
-                                          onChange={e =>
-                                            updateQuestion(idx, 'aiConfig', {
-                                              ...q.aiConfig,
-                                              algorithm: e.target.value
-                                            })
-                                          }
-                                        />
+                                    <div className="admin-input-group">
+                                      <label className="admin-label admin-label--sm">Algorithm</label>
+                                      <input
+                                        type="text"
+                                        className="admin-input admin-input--sm"
+                                        placeholder="BFS, DP, Binary Search..."
+                                        value={q.aiConfig?.algorithm || ''}
+                                        onChange={e => updateQuestion(idx, 'aiConfig', {
+                                          ...q.aiConfig,
+                                          algorithm: e.target.value
+                                        })}
+                                      />
+                                    </div>
 
-                                        <textarea
-                                          className="w-full rounded-xl border px-4 py-3 text-sm"
-                                          placeholder="Prompt guidance for AI (optional)"
-                                          value={q.aiConfig?.promptHint || ''}
-                                          onChange={e =>
-                                            updateQuestion(idx, 'aiConfig', {
-                                              ...q.aiConfig,
-                                              promptHint: e.target.value
-                                            })
-                                          }
-                                        />
+                                    <div className="admin-input-group">
+                                      <label className="admin-label admin-label--sm">Prompt Guidance</label>
+                                      <textarea
+                                        className="admin-textarea admin-textarea--sm"
+                                        placeholder="Optional guidance for AI..."
+                                        value={q.aiConfig?.promptHint || ''}
+                                        onChange={e => updateQuestion(idx, 'aiConfig', {
+                                          ...q.aiConfig,
+                                          promptHint: e.target.value
+                                        })}
+                                      />
+                                    </div>
 
-                                        {/* Regenerate Button */}
-                                        <button
-                                          type="button"
-                                          disabled={aiLoading[q.id]}
-                                          className={cn(
-                                            "mt-2 rounded-xl px-4 py-2 text-sm font-semibold text-white",
-                                            aiLoading[q.id]
-                                              ? "bg-purple-400 cursor-not-allowed"
-                                              : "bg-purple-600 hover:bg-purple-700"
-                                          )}
-                                          onClick={async () => {
-                                            try {
-                                              setAiLoading(prev => ({ ...prev, [q.id]: true }));
-                                              setToast({ message: "Generating question with AI...", type: "info" });
-
-                                              const res = await fetch(`${API_BASE}/api/admin/ai-generate-question`, {
-                                                method: 'POST',
-                                                headers: {
-                                                  'Content-Type': 'application/json',
-                                                  Authorization: `Bearer ${token}`
-                                                },
-                                                body: JSON.stringify(q.aiConfig)
-                                              });
-
-                                              if (!res.ok) throw new Error("AI generation failed");
-
-                                              const data = await res.json();
-
-                                              updateQuestion(idx, 'text', data.title);
-                                              updateQuestion(idx, 'description', data.description);
-                                              updateQuestion(idx, 'testCases', data.testCases);
-                                              updateQuestion(idx, 'hiddenTestCases', data.hiddenTestCases);
-
-                                              setToast({ message: "AI question generated successfully!", type: "success" });
-                                            } catch (err) {
-                                              console.error(err);
-                                              setToast({ message: "Failed to generate AI question", type: "error" });
-                                            } finally {
-                                              setAiLoading(prev => ({ ...prev, [q.id]: false }));
-                                            }
-                                          }}
-                                        >
-                                          {aiLoading[q.id] ? "⏳ Generating..." : "🔄 Regenerate with AI"}
-                                        </button>
-
-                                      </>
-                                    )}
-
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                                    <button
+                                      type="button"
+                                      disabled={aiLoading[q.id]}
+                                      className="admin-btn admin-btn--purple"
+                                      onClick={() => handleGenerateAI(idx, q.id, q.aiConfig)}
+                                    >
+                                      {aiLoading[q.id] ? (
+                                        <>
+                                          <LoadingSpinner size="sm" />
+                                          <span>Generating...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Icons.Wand />
+                                          <span>Generate with AI</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
+                  </div>
 
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      disabled={loading.submit || !tplForm.name.trim() || !tplForm.role.trim() || !tplForm.level}
-                      className="flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 py-4 font-semibold text-black shadow-lg transition-all hover:scale-[1.02] hover:bg-blue-700 hover:shadow-xl active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-gray-300"
-                    >
-                      {loading.submit ? (
-                        <>
-                          <Loader2 className="size-5 animate-spin" />
-                          Creating Template...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="size-5" />
-                          Save Template Configuration
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </div>
-              </div>
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={loading.submit || !tplForm.name.trim() || !tplForm.role.trim() || !tplForm.level}
+                    className="admin-btn admin-btn--primary admin-btn--lg admin-btn--full"
+                  >
+                    {loading.submit ? (
+                      <>
+                        <LoadingSpinner size="sm" />
+                        <span>Creating Template...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Icons.Save />
+                        <span>Save Template Configuration</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </section>
 
               {/* Template Library */}
-              <div className="space-y-4 lg:col-span-5 xl:col-span-4">
-                <div className="flex items-center justify-between px-1">
-                  <h2 className="text-lg font-semibold text-gray-900">Template Library</h2>
-                  <div className="rounded-full bg-gray-100 px-3 py-1.5">
-                    <span className="text-xs font-semibold text-gray-700">{templates.length} Total</span>
-                  </div>
+              <section className="admin-panel admin-panel--small">
+                <div className="admin-panel__header admin-panel__header--simple">
+                  <h2 className="admin-panel__title">Template Library</h2>
+                  <div className="admin-badge">{templates.length} Total</div>
                 </div>
 
                 {loading.templates ? (
                   <LoadingSpinner />
+                ) : templates.length === 0 ? (
+                  <div className="admin-empty-state">
+                    <div className="admin-empty-state__icon">
+                      <Icons.Briefcase />
+                    </div>
+                    <p className="admin-empty-state__title">No templates yet</p>
+                    <p className="admin-empty-state__text">Create your first template to get started</p>
+                  </div>
                 ) : (
-                  <div className="max-h-[calc(100vh-200px)] space-y-4 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 scrollbar-thumb-rounded-full hover:scrollbar-thumb-gray-400">
-                    {templates.length === 0 ? (
-                      <div className="rounded-2xl border border-gray-200 bg-white py-8 text-center sm:py-12">
-                        <div className="mb-4 inline-flex size-12 items-center justify-center rounded-2xl bg-gray-100">
-                          <Briefcase className="size-6 text-gray-500" />
+                  <div className="admin-template-list">
+                    {templates.map(t => (
+                      <div key={t.id} className="admin-template-card">
+                        <div className="admin-template-card__header">
+                          <h3 className="admin-template-card__name">{t.name}</h3>
+                          <button className="admin-template-card__action">
+                            <Icons.ChevronRight />
+                          </button>
                         </div>
-                        <p className="text-sm font-medium text-gray-600">No templates created yet</p>
-                        <p className="mt-1 text-xs text-gray-500">Create your first template to get started</p>
+
+                        <div className="admin-template-card__badges">
+                          <span className="admin-tag admin-tag--blue">
+                            <Icons.Briefcase />
+                            {t.role}
+                          </span>
+                          <span className="admin-tag admin-tag--purple">
+                            {t.level?.toUpperCase()}
+                          </span>
+                        </div>
+
+                        {t.description && (
+                          <p className="admin-template-card__desc">{t.description}</p>
+                        )}
+
+                        <div className="admin-template-card__footer">
+                          <div className="admin-template-card__stats">
+                            <span>
+                              <span className="admin-dot admin-dot--green" />
+                              {t.config?.questions?.length || 0} Questions
+                            </span>
+                            <span>
+                              <span className="admin-dot admin-dot--blue" />
+                              {t.config?.proctor?.heartbeatMs ? `${t.config.proctor.heartbeatMs / 1000}s` : 'N/A'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    ) : (
-                      templates.map((t) => (
-                        <div
-                          key={t.id}
-                          className="group cursor-pointer rounded-2xl border border-gray-200 bg-white p-4 transition-all hover:border-gray-300 hover:shadow-md sm:p-6"
-                        >
-                          <div className="mb-4 flex items-start justify-between">
-                            <div className="min-w-0 flex-1 pr-3">
-                              <h3 className="mb-2 truncate font-semibold text-gray-900 transition-colors group-hover:text-blue-600">
-                                {t.name}
-                              </h3>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                                  <Briefcase className="size-3 shrink-0" />
-                                  <span className="truncate">{t.role}</span>
-                                </span>
-                                <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700">
-                                  {t.level?.toUpperCase()}
-                                </span>
-                              </div>
-                            </div>
-                            <button className="shrink-0 rounded-lg p-2 opacity-0 transition-opacity hover:bg-gray-50 group-hover:opacity-100">
-                              <ChevronRight className="size-4 text-gray-400" />
-                            </button>
-                          </div>
-
-                          {t.description && (
-                            <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-gray-600">{t.description}</p>
-                          )}
-
-                          <div className="flex items-center justify-between border-t border-gray-100 pt-4 text-xs text-gray-500">
-                            <div className="flex items-center gap-3 sm:gap-4">
-                              <span className="flex items-center gap-1.5">
-                                <div className="size-2 shrink-0 rounded-full bg-emerald-500" />
-                                <span className="whitespace-nowrap">{t.config?.questions?.length || 0} Questions</span>
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                <div className="size-2 shrink-0 rounded-full bg-blue-500" />
-                                <span className="whitespace-nowrap">
-                                  {t.config?.proctor?.heartbeatMs ? `${t.config.proctor.heartbeatMs / 1000}s` : 'N/A'}
-                                </span>
-                              </span>
-                            </div>
-                            <time className="whitespace-nowrap font-medium">
-                              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </time>
-                          </div>
-                        </div>
-                      ))
-                    )}
+                    ))}
                   </div>
                 )}
-              </div>
+              </section>
             </div>
           )}
 
-          {/* --- INTERVIEWS TAB --- */}
+          {/* ================== INTERVIEWS TAB ================== */}
           {tab === 'interviews' && (
-            <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
+            <div className="admin-grid admin-grid--reverse">
               {/* Schedule Form */}
-              <div className="lg:col-span-5 xl:col-span-4">
-                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
-                  <div className="mb-6 flex items-center gap-3 sm:mb-8 sm:gap-4">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 sm:size-12">
-                      <Calendar className="size-5 text-blue-600 sm:size-6" />
+              <section className="admin-panel admin-panel--small">
+                <div className="admin-panel__header">
+                  <div className="admin-panel__header-left">
+                    <div className="admin-panel__icon admin-panel__icon--blue">
+                      <Icons.Calendar />
                     </div>
-                    <div className="min-w-0">
-                      <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Schedule Interview</h2>
-                      <p className="hidden text-sm text-gray-600 sm:block">Set up a new interview session</p>
+                    <div>
+                      <h2 className="admin-panel__title">Schedule Interview</h2>
+                      <p className="admin-panel__subtitle">Set up a new session</p>
                     </div>
                   </div>
+                </div>
 
-                  {/* Candidate Search */}
-                  <div className="relative mb-6">
-                    <label className="mb-3 block text-sm font-semibold text-gray-900">
-                      Find Candidate
-                    </label>
-                    <div className="relative">
-                      <input
-                        className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-12 pr-4 text-sm text-gray-900 placeholder-gray-500 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 sm:py-4"
-                        placeholder="Search by name, email or ID..."
-                        value={candidateQuery}
-                        onChange={e => {
-                          setCandidateQuery(e.target.value);
-                          if (e.target.value.length > 2) searchCandidates(e.target.value);
-                          else setCandidateResults([]);
-                        }}
-                      />
-                      <div className="pointer-events-none absolute left-4 top-3 text-gray-400 sm:top-4">
-                        {searchLoading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-                      </div>
-                    </div>
-
-                    {/* Search Results Dropdown */}
-                    {candidateResults.length > 0 && (
-                      <div className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 scrollbar-thumb-rounded-full hover:scrollbar-thumb-gray-400">
-                        {candidateResults.map(c => (
-                          <button
-                            key={c.id}
-                            onClick={() => {
-                              setSelectedCandidate(c);
-                              setScheduleForm({
-                                ...scheduleForm,
-                                candidateName: c.name,
-                                candidateEmail: c.email,
-                                candidateId: c.candidateId || ''
-                              });
-                              setCandidateResults([]);
-                              setCandidateQuery(c.name);
-                            }}
-                            className="group w-full border-b border-gray-100 p-4 text-left transition-colors last:border-0 hover:bg-gray-50"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-medium text-gray-900 transition-colors group-hover:text-blue-600">
-                                  {c.name}
-                                </div>
-                                <div className="mt-1 truncate text-xs text-gray-500">{c.email}</div>
-                                {c.candidateId && (
-                                  <div className="mt-1 text-xs text-gray-400">ID: {c.candidateId}</div>
-                                )}
-                              </div>
-                              <User className="ml-3 size-5 shrink-0 text-gray-300 transition-colors group-hover:text-blue-400" />
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                {/* Candidate Search */}
+                <div className="admin-search">
+                  <label className="admin-label">Find Candidate</label>
+                  <div className="admin-search__input-wrapper">
+                    <span className="admin-search__icon">
+                      {searchLoading ? <LoadingSpinner size="sm" /> : <Icons.Search />}
+                    </span>
+                    <input
+                      type="text"
+                      className="admin-input admin-input--search"
+                      placeholder="Search by name, email or ID..."
+                      value={candidateQuery}
+                      onChange={e => {
+                        setCandidateQuery(e.target.value);
+                        if (e.target.value.length > 2) searchCandidates(e.target.value);
+                        else setCandidateResults([]);
+                      }}
+                    />
                   </div>
 
-                  {/* Selected Candidate Card */}
-                  {selectedCandidate && (
-                    <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
-                            <User className="size-5 text-blue-600" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-blue-900">{selectedCandidate.name}</div>
-                            <div className="truncate text-xs text-blue-700">{selectedCandidate.email}</div>
-                          </div>
-                        </div>
+                  {candidateResults.length > 0 && (
+                    <div className="admin-search__dropdown">
+                      {candidateResults.map(c => (
                         <button
+                          key={c.id}
+                          type="button"
+                          className="admin-search__result"
                           onClick={() => {
-                            setSelectedCandidate(null);
-                            setCandidateQuery('');
+                            setSelectedCandidate(c);
                             setScheduleForm({
                               ...scheduleForm,
-                              candidateName: '',
-                              candidateEmail: '',
-                              candidateId: ''
+                              candidateName: c.name,
+                              candidateEmail: c.email,
+                              candidateId: c.candidateId || ''
                             });
+                            setCandidateResults([]);
+                            setCandidateQuery(c.name);
                           }}
-                          className="shrink-0 rounded-lg p-1 text-blue-400 transition-colors hover:bg-blue-100 hover:text-blue-600"
-                          aria-label="Clear selection"
                         >
-                          <X className="size-4" />
+                          <div className="admin-search__result-info">
+                            <span className="admin-search__result-name">{c.name}</span>
+                            <span className="admin-search__result-email">{c.email}</span>
+                            {c.candidateId && (
+                              <span className="admin-search__result-id">ID: {c.candidateId}</span>
+                            )}
+                          </div>
+                          <Icons.User />
                         </button>
-                      </div>
+                      ))}
                     </div>
                   )}
+                </div>
 
-                  <form onSubmit={handleScheduleInterview} className="space-y-4 sm:space-y-6">
-                    {/* Manual Entry Fields */}
-                    {!selectedCandidate && (
-                      <>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <label className="block text-sm font-semibold text-gray-900">Name</label>
-                            <input
-                              required
-                              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-500 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                              placeholder="John Doe"
-                              value={scheduleForm.candidateName}
-                              onChange={e => setScheduleForm({ ...scheduleForm, candidateName: e.target.value })}
-                              maxLength={100}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="block text-sm font-semibold text-gray-900">Candidate ID</label>
-                            <input
-                              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-500 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                              placeholder="Optional"
-                              value={scheduleForm.candidateId}
-                              onChange={e => setScheduleForm({ ...scheduleForm, candidateId: e.target.value })}
-                              maxLength={50}
-                            />
-                          </div>
-                        </div>
+                {/* Selected Candidate */}
+                {selectedCandidate && (
+                  <div className="admin-selected-candidate">
+                    <div className="admin-selected-candidate__info">
+                      <div className="admin-selected-candidate__avatar">
+                        <Icons.User />
+                      </div>
+                      <div>
+                        <span className="admin-selected-candidate__name">{selectedCandidate.name}</span>
+                        <span className="admin-selected-candidate__email">{selectedCandidate.email}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-selected-candidate__clear"
+                      onClick={() => {
+                        setSelectedCandidate(null);
+                        setCandidateQuery('');
+                        setScheduleForm({ ...scheduleForm, candidateName: '', candidateEmail: '', candidateId: '' });
+                      }}
+                    >
+                      <Icons.X />
+                    </button>
+                  </div>
+                )}
 
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-900">Email Address</label>
+                <form onSubmit={handleScheduleInterview} className="admin-form">
+                  {!selectedCandidate && (
+                    <>
+                      <div className="admin-form__row">
+                        <div className="admin-input-group">
+                          <label className="admin-label">Name</label>
                           <input
+                            type="text"
                             required
-                            type="email"
-                            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-500 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                            placeholder="john.doe@example.com"
-                            value={scheduleForm.candidateEmail}
-                            onChange={e => setScheduleForm({ ...scheduleForm, candidateEmail: e.target.value })}
-                            maxLength={255}
+                            className="admin-input"
+                            placeholder="John Doe"
+                            value={scheduleForm.candidateName}
+                            onChange={e => setScheduleForm({ ...scheduleForm, candidateName: e.target.value })}
                           />
                         </div>
+                        <div className="admin-input-group">
+                          <label className="admin-label">Candidate ID</label>
+                          <input
+                            type="text"
+                            className="admin-input"
+                            placeholder="Optional"
+                            value={scheduleForm.candidateId}
+                            onChange={e => setScheduleForm({ ...scheduleForm, candidateId: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="admin-input-group">
+                        <label className="admin-label">Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          className="admin-input"
+                          placeholder="john@example.com"
+                          value={scheduleForm.candidateEmail}
+                          onChange={e => setScheduleForm({ ...scheduleForm, candidateEmail: e.target.value })}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="admin-input-group">
+                    <label className="admin-label">Interview Template</label>
+                    <select
+                      required
+                      className="admin-select"
+                      value={scheduleForm.templateId}
+                      onChange={e => setScheduleForm({ ...scheduleForm, templateId: e.target.value })}
+                    >
+                      <option value="">Select a template...</option>
+                      {templates.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} • {t.role} • {t.level}
+                        </option>
+                      ))}
+                    </select>
+                    {templates.length === 0 && (
+                      <p className="admin-input-hint admin-input-hint--warning">
+                        No templates available. Create one first.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="admin-input-group">
+                    <label className="admin-label">Schedule Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      min={new Date().toISOString().slice(0, 16)}
+                      className="admin-input"
+                      value={scheduleForm.scheduledAt}
+                      onChange={e => setScheduleForm({ ...scheduleForm, scheduledAt: e.target.value })}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading.submit || templates.length === 0}
+                    className="admin-btn admin-btn--primary admin-btn--lg admin-btn--full"
+                  >
+                    {loading.submit ? (
+                      <>
+                        <LoadingSpinner size="sm" />
+                        <span>Scheduling...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Icons.Calendar />
+                        <span>Schedule Interview</span>
                       </>
                     )}
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-semibold text-gray-900">Interview Template</label>
-                      <select
-                        required
-                        className="w-full cursor-pointer appearance-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                        value={scheduleForm.templateId}
-                        onChange={e => setScheduleForm({ ...scheduleForm, templateId: e.target.value })}
-                      >
-                        <option value="">Select a template...</option>
-                        {templates.map(t => (
-                          <option key={t.id} value={t.id}>
-                            {t.name} • {t.role} • {t.level}
-                          </option>
-                        ))}
-                      </select>
-                      {templates.length === 0 && (
-                        <p className="mt-1 text-xs text-amber-600">No templates available. Create a template first.</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-semibold text-gray-900">Schedule Date & Time</label>
-                      <input
-                        required
-                        type="datetime-local"
-                        min={new Date().toISOString().slice(0, 16)}
-                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                        value={scheduleForm.scheduledAt}
-                        onChange={e => setScheduleForm({ ...scheduleForm, scheduledAt: e.target.value })}
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loading.submit || templates.length === 0}
-                      className="flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 py-4 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:bg-blue-700 hover:shadow-xl active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-gray-300"
-                    >
-                      {loading.submit ? (
-                        <>
-                          <Loader2 className="size-5 animate-spin" />
-                          Scheduling...
-                        </>
-                      ) : (
-                        <>
-                          <Calendar className="size-5" />
-                          Schedule Interview
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </div>
-              </div>
+                  </button>
+                </form>
+              </section>
 
               {/* Interview List */}
-              <div className="space-y-4 lg:col-span-7 xl:col-span-8">
-                <div className="flex items-center justify-between px-1">
-                  <h2 className="text-lg font-semibold text-gray-900">Scheduled Interviews</h2>
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-full bg-gray-100 px-3 py-1.5">
-                      <span className="text-xs font-semibold text-gray-700">{interviews.length} Total</span>
-                    </div>
-                  </div>
+              <section className="admin-panel admin-panel--large">
+                <div className="admin-panel__header admin-panel__header--simple">
+                  <h2 className="admin-panel__title">Scheduled Interviews</h2>
+                  <div className="admin-badge">{interviews.length} Total</div>
                 </div>
 
                 {loading.interviews ? (
                   <LoadingSpinner />
+                ) : interviews.length === 0 ? (
+                  <div className="admin-empty-state">
+                    <div className="admin-empty-state__icon">
+                      <Icons.Calendar />
+                    </div>
+                    <p className="admin-empty-state__title">No interviews scheduled</p>
+                    <p className="admin-empty-state__text">Schedule your first interview to get started</p>
+                  </div>
                 ) : (
-                  <div className="max-h-[calc(100vh-200px)] space-y-4 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 scrollbar-thumb-rounded-full hover:scrollbar-thumb-gray-400">
-                    {interviews.length === 0 ? (
-                      <div className="rounded-2xl border border-gray-200 bg-white py-8 text-center sm:py-12">
-                        <div className="mb-4 inline-flex size-12 items-center justify-center rounded-2xl bg-gray-100">
-                          <Calendar className="size-6 text-gray-500" />
-                        </div>
-                        <p className="text-sm font-medium text-gray-600">No interviews scheduled yet</p>
-                        <p className="mt-1 text-xs text-gray-500">Schedule your first interview to get started</p>
-                      </div>
-                    ) : (
-                      interviews.map(iv => (
-                        <div
-                          key={iv.id}
-                          className="group rounded-2xl border border-gray-200 bg-white p-4 transition-all hover:border-gray-300 hover:shadow-md sm:p-6"
-                        >
-                          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-                            <div className="min-w-0 flex-1">
-                              <div className="mb-3 flex items-center gap-3 sm:gap-4">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-gray-100 to-gray-200 text-lg font-semibold text-gray-700 sm:size-12">
-                                  {iv.candidateName.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="min-w-0">
-                                  <h3 className="truncate font-semibold text-gray-900 transition-colors group-hover:text-blue-600">
-                                    {iv.candidateName}
-                                  </h3>
-                                  <div className="truncate text-sm text-gray-600">{iv.candidateEmail}</div>
-                                </div>
-                              </div>
+                  <div className="admin-interview-list">
+                    {interviews.map(iv => (
+                      <div key={iv.id} className="admin-interview-card">
+                        <div className="admin-interview-card__main">
+                          <div className="admin-interview-card__avatar">
+                            {iv.candidateName.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="admin-interview-card__info">
+                            <h3 className="admin-interview-card__name">{iv.candidateName}</h3>
+                            <p className="admin-interview-card__email">{iv.candidateEmail}</p>
 
-                              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                <StatusBadge status={iv.status} />
+                            <div className="admin-interview-card__meta">
+                              <StatusBadge status={iv.status} />
 
-                                <span className="inline-flex items-center gap-2 text-xs text-gray-600 sm:text-sm">
-                                  <Calendar className="size-3 shrink-0 sm:size-4" />
-                                  <span className="truncate">
-                                    {iv.scheduledAt ? new Date(iv.scheduledAt).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    }) : 'Not scheduled'}
-                                  </span>
-                                </span>
+                              <span className="admin-interview-card__date">
+                                <Icons.Calendar />
+                                {iv.scheduledAt ? new Date(iv.scheduledAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : 'Not scheduled'}
+                              </span>
 
-                                {iv.candidateId && (
-                                  <span className="rounded-lg bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
-                                    ID: {iv.candidateId}
-                                  </span>
-                                )}
-                              </div>
+                              {iv.candidateId && (
+                                <span className="admin-interview-card__id">ID: {iv.candidateId}</span>
+                              )}
                             </div>
-
-                            <Link
-                              to={`/admin/interview/${iv.id}`}
-                              className="group/btn inline-flex shrink-0 items-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-200 hover:text-gray-900 lg:self-auto"
-                            >
-                              Manage
-                              <ChevronDown className="size-4 -rotate-90 transition-transform group-hover/btn:translate-x-1" />
-                            </Link>
                           </div>
                         </div>
-                      ))
-                    )}
+
+                        <Link to={`/admin/interview/${iv.id}`} className="admin-btn admin-btn--secondary">
+                          Manage
+                          <Icons.ChevronRight />
+                        </Link>
+                        <button
+                          type="button"
+                          className="admin-btn admin-btn--danger-ghost"
+                          onClick={() => setDeleteConfirm({ id: iv.id, name: iv.candidateName })}
+                          aria-label="Delete interview"
+                        >
+                          <Icons.Trash />
+                        </button>
+
+                      </div>
+                    ))}
                   </div>
                 )}
-              </div>
+              </section>
             </div>
           )}
         </div>
       </main>
 
-      {/* Toast Notifications */}
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal">
+            <div className="admin-modal__icon admin-modal__icon--danger">
+              <Icons.Trash />
+            </div>
+
+            <h2 className="admin-modal__title">Delete Interview?</h2>
+
+            <p className="admin-modal__description">
+              Are you sure you want to delete the interview for <strong>{deleteConfirm.name}</strong>?
+              This will permanently remove all associated data including recordings and proctor logs.
+            </p>
+
+            <div className="admin-modal__warning">
+              <Icons.AlertCircle />
+              <span>This action cannot be undone</span>
+            </div>
+
+            <div className="admin-modal__actions">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="admin-btn admin-btn--secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteInterview(deleteConfirm.id)}
+                disabled={deleting}
+                className="admin-btn admin-btn--danger"
+              >
+                {deleting ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icons.Trash />
+                    <span>Delete Interview</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
       {toast && (
         <Toast
           message={toast.message}
@@ -1449,7 +1494,9 @@ export function AdminDashboardPage() {
           onClose={() => setToast(null)}
         />
       )}
+
     </div>
   );
 }
 
+export default AdminDashboardPage;

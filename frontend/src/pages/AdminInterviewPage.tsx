@@ -1,21 +1,8 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { 
-    Save, 
-    AlertTriangle, 
-    CheckCircle, 
-    Play, 
-    FileText, 
-    Clock, 
-    Plus, 
-    Trash2,
-    X,
-    MessageSquare,
-    Video,
-    Brain
-} from 'lucide-react';
+import { useEffect, useState, type JSX } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import './AdminInterviewPage.css';
 
-// --- Reusing Types ---
+// --- Types ---
 type Question = {
   id: string;
   type: 'text' | 'audio' | 'code' | 'mcq';
@@ -41,53 +28,345 @@ type MediaRecord = {
   createdAt: string;
 };
 
+type ProctorEvent = {
+  id: string;
+  type: string;
+  payload: any;
+  createdAt: string;
+};
+
 type Interview = {
   id: string;
   candidateName: string;
   candidateEmail: string;
+  candidateId?: string;
+  status: string;
   suspicionScore: number;
-  proctorEvents: { id: string; type: string; payload: any; createdAt: string }[];
+  proctorEvents: ProctorEvent[];
   mediaRecords: MediaRecord[];
   customConfig?: { questions?: Question[]; proctor?: any };
-  template?: { config: { questions?: Question[]; proctor?: any } };
+  template?: { 
+    name?: string;
+    config: { questions?: Question[]; proctor?: any } 
+  };
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
-// --- Inline Toast Component ---
-const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
-    <div className={`fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl border backdrop-blur-md animate-in slide-in-from-right ${
-        type === 'success' ? 'bg-emerald-900/80 border-emerald-500/30 text-emerald-100' : 'bg-red-900/80 border-red-500/30 text-red-100'
-    }`}>
-        {type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
-        <span className="text-sm font-medium">{message}</span>
-        <button onClick={onClose} className="ml-2 hover:opacity-70"><X className="w-4 h-4" /></button>
-    </div>
+// ============================================
+// ICON COMPONENTS
+// ============================================
+
+const Icons = {
+  Sparkles: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 3l1.09 3.41L16.5 7.5l-3.41 1.09L12 12l-1.09-3.41L7.5 7.5l3.41-1.09L12 3zm6.5 9l.72 2.28L21.5 15l-2.28.72-.72 2.28-.72-2.28L15.5 15l2.28-.72.72-2.28zM5.5 15l.72 2.28L8.5 18l-2.28.72-.72 2.28-.72-2.28L2.5 18l2.28-.72.72-2.28z"/>
+    </svg>
+  ),
+  ChevronLeft: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15,18 9,12 15,6"/>
+    </svg>
+  ),
+  Save: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+      <polyline points="17,21 17,13 7,13 7,21"/>
+      <polyline points="7,3 7,8 15,8"/>
+    </svg>
+  ),
+  Plus: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  ),
+  Trash: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3,6 5,6 21,6"/>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      <line x1="10" y1="11" x2="10" y2="17"/>
+      <line x1="14" y1="11" x2="14" y2="17"/>
+    </svg>
+  ),
+  Clock: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12,6 12,12 16,14"/>
+    </svg>
+  ),
+  X: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  ),
+  Check: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20,6 9,17 4,12"/>
+    </svg>
+  ),
+  AlertTriangle: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+    </svg>
+  ),
+  User: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  Mail: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+      <polyline points="22,6 12,13 2,6"/>
+    </svg>
+  ),
+  Hash: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" y1="9" x2="20" y2="9"/>
+      <line x1="4" y1="15" x2="20" y2="15"/>
+      <line x1="10" y1="3" x2="8" y2="21"/>
+      <line x1="16" y1="3" x2="14" y2="21"/>
+    </svg>
+  ),
+  Shield: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  ),
+  Eye: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  ),
+  Brain: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2z"/>
+      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2z"/>
+    </svg>
+  ),
+  Mic: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
+    </svg>
+  ),
+  Video: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="23 7 16 12 23 17 23 7"/>
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+    </svg>
+  ),
+  MessageSquare: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  ),
+  Play: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z"/>
+    </svg>
+  ),
+  Activity: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  ),
+  FileText: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14,2 14,8 20,8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+  ),
+  Code: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="16,18 22,12 16,6"/>
+      <polyline points="8,6 2,12 8,18"/>
+    </svg>
+  ),
+  CheckCircle: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+    </svg>
+  ),
+};
+
+// ============================================
+// LOADING SPINNER
+// ============================================
+
+const LoadingSpinner = ({ size = 'default' }: { size?: 'sm' | 'default' | 'lg' }) => (
+  <div className={`monitor-spinner monitor-spinner--${size}`}>
+    <div className="monitor-spinner__ring" />
+  </div>
 );
+
+// ============================================
+// TOAST COMPONENT
+// ============================================
+
+const Toast = ({
+  message,
+  type,
+  onClose
+}: {
+  message: string;
+  type: 'success' | 'error';
+  onClose: () => void;
+}) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={`monitor-toast monitor-toast--${type}`}>
+      <span className="monitor-toast__icon">
+        {type === 'success' ? <Icons.Check /> : <Icons.AlertTriangle />}
+      </span>
+      <p className="monitor-toast__message">{message}</p>
+      <button onClick={onClose} className="monitor-toast__close" aria-label="Close">
+        <Icons.X />
+      </button>
+    </div>
+  );
+};
+
+// ============================================
+// SUSPICION BADGE
+// ============================================
+
+const SuspicionBadge = ({ score }: { score: number }) => {
+  const level = score > 7 ? 'critical' : score > 4 ? 'warning' : 'safe';
+  
+  return (
+    <div className={`monitor-suspicion monitor-suspicion--${level}`}>
+      <div className="monitor-suspicion__icon">
+        <Icons.Shield />
+      </div>
+      <div className="monitor-suspicion__content">
+        <span className="monitor-suspicion__label">Suspicion Score</span>
+        <span className="monitor-suspicion__value">{score}</span>
+      </div>
+      <div className="monitor-suspicion__meter">
+        <div 
+          className="monitor-suspicion__fill" 
+          style={{ width: `${Math.min(score * 10, 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// QUESTION TYPE BADGE
+// ============================================
+
+const QuestionTypeBadge = ({ type }: { type: string }) => {
+  const config: Record<string, { icon: JSX.Element; label: string; className: string }> = {
+    text: { icon: <Icons.FileText />, label: 'Text', className: 'blue' },
+    audio: { icon: <Icons.Mic />, label: 'Voice', className: 'purple' },
+    mcq: { icon: <Icons.CheckCircle />, label: 'MCQ', className: 'green' },
+    code: { icon: <Icons.Code />, label: 'Code', className: 'orange' },
+  };
+
+  const { icon, label, className } = config[type] || config.text;
+
+  return (
+    <span className={`monitor-type-badge monitor-type-badge--${className}`}>
+      {icon}
+      <span>{label}</span>
+    </span>
+  );
+};
+
+// ============================================
+// AI ANALYSIS CARD
+// ============================================
+
+const AIAnalysisCard = ({ analysis }: { analysis: AIAnalysis }) => {
+  const scoreLevel = analysis.score >= 7 ? 'good' : analysis.score >= 5 ? 'fair' : 'poor';
+
+  return (
+    <div className="monitor-ai-card">
+      <div className="monitor-ai-card__header">
+        <div className="monitor-ai-card__title">
+          <Icons.Brain />
+          <span>AI Analysis</span>
+        </div>
+        <div className={`monitor-ai-card__score monitor-ai-card__score--${scoreLevel}`}>
+          <span className="monitor-ai-card__score-value">{analysis.score}</span>
+          <span className="monitor-ai-card__score-max">/10</span>
+        </div>
+      </div>
+
+      <div className="monitor-ai-card__body">
+        <div className="monitor-ai-card__row">
+          <span className="monitor-ai-card__label">Detected Emotion</span>
+          <span className="monitor-ai-card__value">{analysis.emotion}</span>
+        </div>
+
+        {analysis.contradiction && (
+          <div className="monitor-ai-card__alert monitor-ai-card__alert--warning">
+            <Icons.AlertTriangle />
+            <div>
+              <strong>Contradiction Detected</strong>
+              <p>{analysis.contradiction}</p>
+            </div>
+          </div>
+        )}
+
+        {analysis.followUpQuestion && (
+          <div className="monitor-ai-card__alert monitor-ai-card__alert--info">
+            <Icons.MessageSquare />
+            <div>
+              <strong>Suggested Follow-up</strong>
+              <p>{analysis.followUpQuestion}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 export function AdminInterviewPage() {
   const { id } = useParams<{ id: string }>();
   const [interview, setInterview] = useState<Interview | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [activeTab, setActiveTab] = useState<'questions' | 'responses'>('questions');
 
   useEffect(() => {
     fetchInterview();
   }, [id]);
 
   const fetchInterview = async () => {
+    setLoading(true);
     try {
-        const res = await fetch(`${API_BASE}/api/admin/interviews/${id}`, {
-             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (!res.ok) throw new Error('Failed to load');
-        const data = await res.json();
-        setInterview(data);
-        const initialQuestions = data.customConfig?.questions || data.template?.config?.questions || [];
-        setQuestions(initialQuestions);
+      const res = await fetch(`${API_BASE}/api/admin/interviews/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!res.ok) throw new Error('Failed to load');
+      const data = await res.json();
+      setInterview(data);
+      const initialQuestions = data.customConfig?.questions || data.template?.config?.questions || [];
+      setQuestions(initialQuestions);
     } catch (err) {
-        console.error(err);
+      console.error(err);
+      setToast({ msg: 'Failed to load interview data', type: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -98,272 +377,416 @@ export function AdminInterviewPage() {
       const existingProctorConfig = interview.customConfig?.proctor || interview.template?.config?.proctor || {};
       const payload = { customConfig: { questions, proctor: existingProctorConfig } };
 
-      await fetch(`${API_BASE}/api/admin/interviews/${id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/interviews/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(payload),
       });
+
+      if (!res.ok) throw new Error('Save failed');
       setToast({ msg: 'Configuration saved successfully', type: 'success' });
     } catch (e) {
       setToast({ msg: 'Failed to save configuration', type: 'error' });
     } finally {
       setSaving(false);
-      setTimeout(() => setToast(null), 3000);
     }
   };
 
   const updateQuestion = (index: number, field: keyof Question, value: any) => {
     const newQuestions = [...questions];
-    // @ts-ignore 
     newQuestions[index] = { ...newQuestions[index], [field]: value };
     setQuestions(newQuestions);
   };
 
-  if (!interview) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
+  const addQuestion = () => {
+    setQuestions([...questions, {
+      id: crypto.randomUUID(),
+      type: 'text',
+      text: '',
+      durationSec: 60
+    }]);
+  };
+
+  const removeQuestion = (index: number) => {
+    if (questions.length === 1) {
+      setToast({ msg: 'At least one question is required', type: 'error' });
+      return;
+    }
+    setQuestions(questions.filter((_, i) => i !== index));
+  };
+
+  // Loading State
+  if (loading) {
+    return (
+      <div className="monitor-page">
+        <div className="monitor-loading">
+          <LoadingSpinner size="lg" />
+          <p>Loading interview data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error State
+  if (!interview) {
+    return (
+      <div className="monitor-page">
+        <div className="monitor-error">
+          <div className="monitor-error__icon">
+            <Icons.AlertTriangle />
+          </div>
+          <h2>Interview Not Found</h2>
+          <p>The requested interview could not be loaded.</p>
+          <Link to="/admin" className="monitor-btn monitor-btn--primary">
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const responses = interview.mediaRecords?.filter(r => ['audio', 'video'].includes(r.type)) || [];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 lg:p-12">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-800">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold text-white">Interview Monitor</h1>
-                <span className={`px-2 py-0.5 text-xs font-bold rounded uppercase ${interview.suspicionScore > 5 ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                    Suspicion: {interview.suspicionScore}
-                </span>
-            </div>
-            <div className="flex flex-wrap gap-4 text-sm text-slate-400">
-              <span className="flex items-center gap-1.5"><FileText className="w-4 h-4" /> {interview.id.slice(0,8)}</span>
-              <span className="w-1 h-1 bg-slate-700 rounded-full" />
-              <span className="text-white font-medium">{interview.candidateName}</span>
-              <span className="w-1 h-1 bg-slate-700 rounded-full" />
-              <span>{interview.candidateEmail}</span>
-            </div>
-          </div>
-          <button 
-            onClick={handleSaveConfig}
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition-colors disabled:opacity-50 shadow-lg shadow-indigo-900/20"
-          >
-            {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
-            Save Configuration
-          </button>
-        </header>
+    <div className="monitor-page">
+      {/* ================================
+          NAVIGATION
+          ================================ */}
+      <header className="monitor-nav">
+        <div className="monitor-nav__container">
+          <div className="monitor-nav__left">
+            <Link to="/interviewer/dashboard" className="monitor-nav__back">
+              <Icons.ChevronLeft />
+              <span>Back</span>
+            </Link>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          
-          {/* Question Editor */}
-          <section className="xl:col-span-2 space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-slate-200">Questions Configuration</h2>
-              <button 
-                onClick={() => setQuestions([...questions, { id: crypto.randomUUID(), type: 'text', text: '', durationSec: 60 }])} 
-                className="flex items-center gap-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-indigo-400 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Question
-              </button>
-            </div>
+            <div className="monitor-nav__divider" />
 
-            <div className="space-y-4">
-              {questions.map((q, idx) => (
-                <div key={q.id} className="group p-5 bg-slate-900/50 border border-slate-800 rounded-xl space-y-4 transition-all hover:border-slate-700 hover:shadow-lg hover:shadow-black/20">
-                  <div className="flex gap-4">
-                    <div className="flex flex-col items-center gap-2">
-                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-xs font-mono">
-                        {idx + 1}
-                        </span>
-                        <div className="w-px h-full bg-slate-800 group-last:hidden" />
-                    </div>
-                    
-                    <div className="flex-1 space-y-3">
-                      <div className="flex flex-wrap gap-3">
-                        <select 
-                          value={q.type}
-                          onChange={(e) => updateQuestion(idx, 'type', e.target.value)}
-                          className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:border-indigo-500 outline-none"
-                        >
-                          <option value="text">Short Answer</option>
-                          <option value="audio">Voice Recording</option>
-                          <option value="mcq">Multiple Choice</option>
-                          <option value="code">Code Challenge</option>
-                        </select>
-                        
-                        <div className="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5">
-                          <Clock className="w-3.5 h-3.5 text-slate-500" />
-                          <input 
-                            type="number" 
-                            value={q.durationSec || 60}
-                            onChange={(e) => updateQuestion(idx, 'durationSec', parseInt(e.target.value))}
-                            className="w-12 bg-transparent text-sm text-slate-300 outline-none text-right"
-                          />
-                          <span className="text-xs text-slate-500">s</span>
-                        </div>
-
-                        <button onClick={() => setQuestions(questions.filter((_, i) => i !== idx))} className="ml-auto p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <textarea
-                        value={q.text}
-                        onChange={(e) => updateQuestion(idx, 'text', e.target.value)}
-                        placeholder="Type the interview question here..."
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-200 placeholder-slate-600 focus:border-indigo-500 outline-none resize-none h-24 text-sm leading-relaxed"
-                      />
-
-                      {q.type === 'mcq' && (
-                        <input 
-                          type="text"
-                          value={q.options?.join(', ') || ''}
-                          onChange={(e) => updateQuestion(idx, 'options', e.target.value.split(',').map(s => s.trim()))}
-                          placeholder="Options (comma separated): Apple, Banana, Cherry"
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Proctor Logs */}
-          <section className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-200">Live Proctor Logs</h2>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden h-[600px] flex flex-col">
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                {interview.proctorEvents.length === 0 ? (
-                    <div className="h-full flex items-center justify-center text-slate-600 text-sm">No events detected yet</div>
-                ) : (
-                    interview.proctorEvents.map((e) => (
-                    <div key={e.id} className="group p-3 rounded-lg hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
-                        <div className="flex justify-between items-center mb-1.5">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                            e.type.includes('VIOLATION') || e.type.includes('forbidden') 
-                            ? 'bg-red-500/10 text-red-400' 
-                            : 'bg-blue-500/10 text-blue-400'
-                        }`}>
-                            {e.type.replace(/_/g, ' ')}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                            {new Date(e.createdAt).toLocaleTimeString()}
-                        </span>
-                        </div>
-                        <p className="text-xs text-slate-400 font-mono break-all line-clamp-2 group-hover:line-clamp-none">
-                            {JSON.stringify(e.payload)}
-                        </p>
-                    </div>
-                    ))
-                )}
+            <div className="monitor-nav__brand">
+              <div className="monitor-nav__logo">
+                <Icons.Eye />
+              </div>
+              <div>
+                <h1 className="monitor-nav__title">Interview Monitor</h1>
+                <p className="monitor-nav__subtitle">
+                  {interview.template?.name || 'Custom Interview'}
+                </p>
               </div>
             </div>
-          </section>
+          </div>
+
+          <div className="monitor-nav__right">
+            <button
+              onClick={handleSaveConfig}
+              disabled={saving}
+              className="monitor-btn monitor-btn--primary"
+            >
+              {saving ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Icons.Save />
+                  <span>Save Changes</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
+      </header>
 
-        {/* Responses & AI Section */}
-        <section className="pt-8 border-t border-slate-800 space-y-6">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                <Brain className="w-6 h-6 text-indigo-500" />
-                AI Analysis & Responses
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {responses.length === 0 ? (
-                    <div className="col-span-full py-12 bg-slate-900/50 border border-dashed border-slate-800 rounded-2xl text-center text-slate-500">
-                        Candidate hasn't submitted any responses yet.
-                    </div>
-                ) : (
-                    responses.map((record) => (
-                        <div key={record.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-slate-700 transition-colors">
-                            {/* Header */}
-                            <div className="px-4 py-3 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                    {record.type === 'audio' ? <MessageSquare className="w-4 h-4 text-indigo-400" /> : <Video className="w-4 h-4 text-indigo-400" />}
-                                    <span className="text-xs font-bold text-slate-300 uppercase">{record.type} Response</span>
-                                </div>
-                                <span className="text-xs text-slate-500 font-mono">{new Date(record.createdAt).toLocaleTimeString()}</span>
-                            </div>
+      {/* ================================
+          MAIN CONTENT
+          ================================ */}
+      <main className="monitor-main">
+        <div className="monitor-main__container">
 
-                            <div className="p-4 space-y-4">
-                                {/* Media Player */}
-                                <div className="bg-black rounded-lg overflow-hidden border border-slate-800">
-                                    {record.type === 'audio' ? (
-                                        <audio controls className="w-full h-10" src={`${API_BASE}/${record.path}`} />
-                                    ) : (
-                                        <video controls className="w-full aspect-video" src={`${API_BASE}/${record.path}`} />
-                                    )}
-                                </div>
-
-                                {/* Transcript */}
-                                {record.transcript && (
-                                    <div className="text-sm text-slate-400 italic bg-slate-950/50 p-3 rounded border border-slate-800/50">
-                                        "{record.transcript}"
-                                    </div>
-                                )}
-
-                                {/* AI Card */}
-                                {record.analysisJson ? (
-                                    <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-xl p-4 space-y-3">
-                                        <div className="flex justify-between items-center pb-2 border-b border-indigo-500/10">
-                                            <div className="flex items-center gap-2 text-indigo-300">
-                                                <Brain className="w-4 h-4" />
-                                                <span className="text-xs font-bold uppercase tracking-wider">AI Shadow</span>
-                                            </div>
-                                            <div className="text-lg font-bold text-white">
-                                                <span className={record.analysisJson.score >= 7 ? 'text-emerald-400' : 'text-yellow-400'}>
-                                                    {record.analysisJson.score}
-                                                </span>
-                                                <span className="text-slate-600 text-sm">/10</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex gap-2">
-                                                <span className="text-slate-500">Emotion:</span>
-                                                <span className="text-slate-200">{record.analysisJson.emotion}</span>
-                                            </div>
-                                            {record.analysisJson.contradiction && (
-                                                <div className="flex gap-2 text-red-300 bg-red-950/30 p-2 rounded border border-red-900/30">
-                                                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                                                    <span className="text-xs">{record.analysisJson.contradiction}</span>
-                                                </div>
-                                            )}
-                                            {record.analysisJson.followUpQuestion && (
-                                                 <div className="flex gap-2 text-indigo-300 bg-indigo-900/20 p-2 rounded border border-indigo-900/30">
-                                                    <Play className="w-4 h-4 shrink-0" />
-                                                    <span className="text-xs italic">Suggested Follow-up: {record.analysisJson.followUpQuestion}</span>
-                                                 </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="text-xs text-slate-600 text-center py-2 flex items-center justify-center gap-2">
-                                        <div className="w-2 h-2 bg-slate-600 rounded-full animate-pulse" />
-                                        Processing AI analysis...
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))
-                )}
+          {/* Interview Info Card */}
+          <section className="monitor-info-card">
+            <div className="monitor-info-card__details">
+              <div className="monitor-info-card__avatar">
+                {interview.candidateName.charAt(0).toUpperCase()}
+              </div>
+              <div className="monitor-info-card__content">
+                <h2 className="monitor-info-card__name">{interview.candidateName}</h2>
+                <div className="monitor-info-card__meta">
+                  <span className="monitor-info-card__item">
+                    <Icons.Mail />
+                    {interview.candidateEmail}
+                  </span>
+                  <span className="monitor-info-card__item">
+                    <Icons.Hash />
+                    {interview.id.slice(0, 8)}
+                  </span>
+                  {interview.candidateId && (
+                    <span className="monitor-info-card__item">
+                      <Icons.User />
+                      {interview.candidateId}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-        </section>
-      </div>
+            <SuspicionBadge score={interview.suspicionScore} />
+          </section>
 
+          {/* Tabs */}
+          <div className="monitor-tabs">
+            <button
+              className={`monitor-tabs__btn ${activeTab === 'questions' ? 'monitor-tabs__btn--active' : ''}`}
+              onClick={() => setActiveTab('questions')}
+            >
+              <Icons.FileText />
+              <span>Questions</span>
+              <span className="monitor-tabs__count">{questions.length}</span>
+            </button>
+            <button
+              className={`monitor-tabs__btn ${activeTab === 'responses' ? 'monitor-tabs__btn--active' : ''}`}
+              onClick={() => setActiveTab('responses')}
+            >
+              <Icons.Brain />
+              <span>AI Responses</span>
+              <span className="monitor-tabs__count">{responses.length}</span>
+            </button>
+          </div>
+
+          {/* Content Grid */}
+          <div className="monitor-grid">
+            {/* Left Panel */}
+            <div className="monitor-panel monitor-panel--main">
+              {activeTab === 'questions' && (
+                <>
+                  {/* Questions Header */}
+                  <div className="monitor-panel__header">
+                    <div className="monitor-panel__header-left">
+                      <div className="monitor-panel__icon monitor-panel__icon--blue">
+                        <Icons.FileText />
+                      </div>
+                      <div>
+                        <h2 className="monitor-panel__title">Questions Configuration</h2>
+                        <p className="monitor-panel__subtitle">Edit interview questions</p>
+                      </div>
+                    </div>
+                    <button onClick={addQuestion} className="monitor-btn monitor-btn--secondary monitor-btn--sm">
+                      <Icons.Plus />
+                      <span>Add Question</span>
+                    </button>
+                  </div>
+
+                  {/* Questions List */}
+                  <div className="monitor-questions">
+                    {questions.map((q, idx) => (
+                      <div key={q.id} className="monitor-question">
+                        <div className="monitor-question__number">{idx + 1}</div>
+
+                        <div className="monitor-question__content">
+                          <div className="monitor-question__header">
+                            <QuestionTypeBadge type={q.type} />
+
+                            <select
+                              value={q.type}
+                              onChange={(e) => updateQuestion(idx, 'type', e.target.value)}
+                              className="monitor-select"
+                            >
+                              <option value="text">Text Response</option>
+                              <option value="audio">Voice Recording</option>
+                              <option value="mcq">Multiple Choice</option>
+                              <option value="code">Code Challenge</option>
+                            </select>
+
+                            <div className="monitor-duration">
+                              <Icons.Clock />
+                              <input
+                                type="number"
+                                min="10"
+                                max="600"
+                                value={q.durationSec || 60}
+                                onChange={(e) => updateQuestion(idx, 'durationSec', parseInt(e.target.value) || 60)}
+                                className="monitor-duration__input"
+                              />
+                              <span>sec</span>
+                            </div>
+
+                            <button
+                              onClick={() => removeQuestion(idx)}
+                              className="monitor-question__delete"
+                              aria-label="Delete question"
+                            >
+                              <Icons.Trash />
+                            </button>
+                          </div>
+
+                          <textarea
+                            value={q.text}
+                            onChange={(e) => updateQuestion(idx, 'text', e.target.value)}
+                            placeholder="Enter your interview question here..."
+                            className="monitor-textarea"
+                            rows={3}
+                          />
+
+                          {q.type === 'mcq' && (
+                            <div className="monitor-question__options">
+                              <label className="monitor-label">Answer Options</label>
+                              <input
+                                type="text"
+                                value={q.options?.join(', ') || ''}
+                                onChange={(e) => updateQuestion(idx, 'options', e.target.value.split(',').map(s => s.trim()))}
+                                placeholder="Enter options separated by commas: Option A, Option B, Option C"
+                                className="monitor-input"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'responses' && (
+                <>
+                  {/* Responses Header */}
+                  <div className="monitor-panel__header">
+                    <div className="monitor-panel__header-left">
+                      <div className="monitor-panel__icon monitor-panel__icon--purple">
+                        <Icons.Brain />
+                      </div>
+                      <div>
+                        <h2 className="monitor-panel__title">AI Analysis & Responses</h2>
+                        <p className="monitor-panel__subtitle">Review candidate submissions</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Responses List */}
+                  <div className="monitor-responses">
+                    {responses.length === 0 ? (
+                      <div className="monitor-empty">
+                        <div className="monitor-empty__icon">
+                          <Icons.MessageSquare />
+                        </div>
+                        <h3>No Responses Yet</h3>
+                        <p>The candidate hasn't submitted any responses.</p>
+                      </div>
+                    ) : (
+                      responses.map((record) => (
+                        <div key={record.id} className="monitor-response">
+                          <div className="monitor-response__header">
+                            <div className="monitor-response__type">
+                              {record.type === 'audio' ? <Icons.Mic /> : <Icons.Video />}
+                              <span>{record.type === 'audio' ? 'Voice' : 'Video'} Response</span>
+                            </div>
+                            <span className="monitor-response__time">
+                              {new Date(record.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+
+                          <div className="monitor-response__body">
+                            {/* Media Player */}
+                            <div className="monitor-response__player">
+                              {record.type === 'audio' ? (
+                                <audio controls className="monitor-audio">
+                                  <source src={`${API_BASE}/${record.path}`} />
+                                </audio>
+                              ) : (
+                                <video controls className="monitor-video">
+                                  <source src={`${API_BASE}/${record.path}`} />
+                                </video>
+                              )}
+                            </div>
+
+                            {/* Transcript */}
+                            {record.transcript && (
+                              <div className="monitor-response__transcript">
+                                <label>Transcript</label>
+                                <p>"{record.transcript}"</p>
+                              </div>
+                            )}
+
+                            {/* AI Analysis */}
+                            {record.analysisJson ? (
+                              <AIAnalysisCard analysis={record.analysisJson} />
+                            ) : (
+                              <div className="monitor-response__processing">
+                                <LoadingSpinner size="sm" />
+                                <span>Processing AI analysis...</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Right Panel - Proctor Logs */}
+            <aside className="monitor-panel monitor-panel--sidebar">
+              <div className="monitor-panel__header monitor-panel__header--compact">
+                <div className="monitor-panel__header-left">
+                  <div className="monitor-panel__icon monitor-panel__icon--orange">
+                    <Icons.Activity />
+                  </div>
+                  <h2 className="monitor-panel__title">Proctor Logs</h2>
+                </div>
+                <span className="monitor-badge">{interview.proctorEvents.length}</span>
+              </div>
+
+              <div className="monitor-logs">
+                {interview.proctorEvents.length === 0 ? (
+                  <div className="monitor-logs__empty">
+                    <Icons.Shield />
+                    <span>No events detected</span>
+                  </div>
+                ) : (
+                  interview.proctorEvents.map((event) => {
+                    const isViolation = event.type.includes('VIOLATION') || 
+                                        event.type.includes('forbidden') ||
+                                        event.type.includes('FOCUS');
+                    return (
+                      <div 
+                        key={event.id} 
+                        className={`monitor-log ${isViolation ? 'monitor-log--violation' : ''}`}
+                      >
+                        <div className="monitor-log__header">
+                          <span className={`monitor-log__type ${isViolation ? 'monitor-log__type--violation' : ''}`}>
+                            {event.type.replace(/_/g, ' ')}
+                          </span>
+                          <span className="monitor-log__time">
+                            {new Date(event.createdAt).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <p className="monitor-log__payload">
+                          {typeof event.payload === 'string' 
+                            ? event.payload 
+                            : JSON.stringify(event.payload)}
+                        </p>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </aside>
+          </div>
+        </div>
+      </main>
+
+      {/* Toast */}
       {toast && (
-        <Toast 
-            message={toast.msg} 
-            type={toast.type} 
-            onClose={() => setToast(null)} 
+        <Toast
+          message={toast.msg}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>
   );
 }
+
+export default AdminInterviewPage;
