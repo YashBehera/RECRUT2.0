@@ -43,6 +43,7 @@ export function setupRealtimeInterviewWSS(server: any) {
     let openaiWS: WebSocket;
     let openaiReady = false;
     let frontendClosed = false;
+    let currentQuestionIndex = 0; // Track which question is being answered
 
     const audioQueue: Buffer[] = [];
 
@@ -364,8 +365,20 @@ Failure to enforce discrepancy checks is considered incorrect behavior.
         const transcript = event.transcript?.trim();
         if (transcript) {
           console.log("🎤 [CANDIDATE]", transcript);
-          // [SAVE] Answer with timestamp
-          saveConversationLog(interviewId!, "candidate", transcript);
+          // [SAVE] Answer with timestamp and question index
+          saveConversationLog(interviewId!, "candidate", transcript, currentQuestionIndex);
+
+          // Forward transcript to the frontend so it can run stress / filler analysis in real time.
+          try {
+            client.send(
+              JSON.stringify({
+                type: "candidate_transcript",
+                transcript,
+              })
+            );
+          } catch (err) {
+            console.error("❌ [WS] Failed to forward transcript:", err);
+          }
         }
       }
 
@@ -382,6 +395,9 @@ Failure to enforce discrepancy checks is considered incorrect behavior.
           if (!questionText) return;
 
           console.log("🤖 [AI QUESTION]", questionText);
+
+          // Increment question counter before we save the next answer
+          currentQuestionIndex++;
 
           const newQuestion = {
             id: `ai-followup-${Date.now()}`,
@@ -501,7 +517,7 @@ Failure to enforce discrepancy checks is considered incorrect behavior.
 /**
  * Helper to append a conversation turn to the Interview's customConfig
  */
-async function saveConversationLog(interviewId: string, role: "candidate" | "ai", text: string) {
+async function saveConversationLog(interviewId: string, role: "candidate" | "ai", text: string, questionIndex?: number) {
   try {
     const interview = await prisma.interview.findUnique({
       where: { id: interviewId },
@@ -522,7 +538,8 @@ async function saveConversationLog(interviewId: string, role: "candidate" | "ai"
               {
                 role,
                 text,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                ...(role === 'candidate' && questionIndex !== undefined && { questionIndex })
               }
             ]
           }

@@ -1,6 +1,8 @@
 import { useEffect, useState, type JSX } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import './AdminInterviewPage.css';
+import { StressTrajectoryGraph, StressSummary } from '../components/StressTrajectoryGraph';
+import type { StressState } from '../lib/audioAnalysis';
 
 // --- Types ---
 type Question = {
@@ -35,6 +37,18 @@ type ProctorEvent = {
   createdAt: string;
 };
 
+type ConversationTurn = {
+  role: 'candidate' | 'ai';
+  text: string;
+  timestamp: string;
+  questionIndex?: number; // Track which question this answer is for
+};
+
+type QuestionAnswer = {
+  question: Question;
+  answer: ConversationTurn | null;
+};
+
 type Interview = {
   id: string;
   candidateName: string;
@@ -44,10 +58,10 @@ type Interview = {
   suspicionScore: number;
   proctorEvents: ProctorEvent[];
   mediaRecords: MediaRecord[];
-  customConfig?: { questions?: Question[]; proctor?: any };
+  customConfig?: { questions?: Question[]; proctor?: any; conversationLog?: ConversationTurn[] };
   template?: { 
     name?: string;
-    config: { questions?: Question[]; proctor?: any } 
+    config: { questions?: Question[]; proctor?: any; conversationLog?: ConversationTurn[] } 
   };
 };
 
@@ -342,6 +356,7 @@ export function AdminInterviewPage() {
   const { id } = useParams<{ id: string }>();
   const [interview, setInterview] = useState<Interview | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [stressMetrics, setStressMetrics] = useState<StressState[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -354,14 +369,27 @@ export function AdminInterviewPage() {
   const fetchInterview = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/interviews/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      const [res, stressRes] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/interviews/${id}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        }),
+        fetch(`${API_BASE}/api/interviews/${id}/stress`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        })
+      ]);
+
       if (!res.ok) throw new Error('Failed to load');
       const data = await res.json();
       setInterview(data);
       const initialQuestions = data.customConfig?.questions || data.template?.config?.questions || [];
       setQuestions(initialQuestions);
+
+      if (stressRes.ok) {
+        const stressData = await stressRes.json();
+        setStressMetrics(Array.isArray(stressData.metrics) ? stressData.metrics : []);
+      } else {
+        setStressMetrics([]);
+      }
     } catch (err) {
       console.error(err);
       setToast({ msg: 'Failed to load interview data', type: 'error' });
@@ -449,6 +477,23 @@ export function AdminInterviewPage() {
   }
 
   const responses = interview.mediaRecords?.filter(r => ['audio', 'video'].includes(r.type)) || [];
+  const conversationLog = interview.customConfig?.conversationLog || interview.template?.config?.conversationLog || [];
+  const candidateTurns = conversationLog.filter(turn => turn.role === 'candidate');
+  const totalResponses = responses.length + candidateTurns.length;
+  
+  // Match answers to questions using questionIndex (new) or fallback to sequence matching (legacy)
+  const questionAnswerPairs: QuestionAnswer[] = questions.map((question, index) => {
+    // First, try to find answer by questionIndex (new approach)
+    let answer = candidateTurns.find(turn => turn.questionIndex === index);
+    // Fallback: if no index match, use sequence matching for legacy interviews
+    if (!answer && candidateTurns.length > 0) {
+      answer = candidateTurns[index] || null;
+    }
+    return {
+      question,
+      answer: answer || null,
+    };
+  });
 
   return (
     <div className="monitor-page">
@@ -551,7 +596,7 @@ export function AdminInterviewPage() {
             >
               <Icons.Brain />
               <span>AI Responses</span>
-              <span className="monitor-tabs__count">{responses.length}</span>
+              <span className="monitor-tabs__count">{totalResponses}</span>
             </button>
           </div>
 
@@ -580,7 +625,7 @@ export function AdminInterviewPage() {
 
                   {/* Questions List */}
                   <div className="monitor-questions">
-                    {questions.map((q, idx) => (
+                    {questionAnswerPairs.map(({ question: q, answer }, idx) => (
                       <div key={q.id} className="monitor-question">
                         <div className="monitor-question__number">{idx + 1}</div>
 
@@ -641,6 +686,20 @@ export function AdminInterviewPage() {
                               />
                             </div>
                           )}
+
+                          <div className="monitor-question__answer">
+                            <label className="monitor-label">Candidate Answer</label>
+                            {answer ? (
+                              <div className="monitor-question__answer-box">
+                                <p>"{answer.text}"</p>
+                                <span>{new Date(answer.timestamp).toLocaleString()}</span>
+                              </div>
+                            ) : (
+                              <div className="monitor-question__answer-empty">
+                                No answer recorded yet.
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -663,6 +722,20 @@ export function AdminInterviewPage() {
                     </div>
                   </div>
 
+                  {/* Stress Trajectory */}
+                  {stressMetrics.length > 0 && (
+                    <div className="monitor-stress-panel">
+                      <div className="monitor-stress-panel__header">
+                        <div>
+                          <h3 className="monitor-stress-panel__title">Stress Trajectory</h3>
+                          <p className="monitor-stress-panel__subtitle">Real-time voice stress and cognitive load over time</p>
+                        </div>
+                        <StressSummary history={stressMetrics} />
+                      </div>
+                      <StressTrajectoryGraph stressHistory={stressMetrics} />
+                    </div>
+                  )}
+
                   {/* Responses List */}
                   <div className="monitor-responses">
                     {responses.length === 0 ? (
@@ -674,52 +747,54 @@ export function AdminInterviewPage() {
                         <p>The candidate hasn't submitted any responses.</p>
                       </div>
                     ) : (
-                      responses.map((record) => (
-                        <div key={record.id} className="monitor-response">
-                          <div className="monitor-response__header">
-                            <div className="monitor-response__type">
-                              {record.type === 'audio' ? <Icons.Mic /> : <Icons.Video />}
-                              <span>{record.type === 'audio' ? 'Voice' : 'Video'} Response</span>
+                      <>
+                        {responses.map((record) => (
+                          <div key={record.id} className="monitor-response">
+                            <div className="monitor-response__header">
+                              <div className="monitor-response__type">
+                                {record.type === 'audio' ? <Icons.Mic /> : <Icons.Video />}
+                                <span>{record.type === 'audio' ? 'Voice' : 'Video'} Response</span>
+                              </div>
+                              <span className="monitor-response__time">
+                                {new Date(record.createdAt).toLocaleString()}
+                              </span>
                             </div>
-                            <span className="monitor-response__time">
-                              {new Date(record.createdAt).toLocaleString()}
-                            </span>
-                          </div>
 
-                          <div className="monitor-response__body">
-                            {/* Media Player */}
-                            <div className="monitor-response__player">
-                              {record.type === 'audio' ? (
-                                <audio controls className="monitor-audio">
-                                  <source src={`${API_BASE}/${record.path}`} />
-                                </audio>
+                            <div className="monitor-response__body">
+                              {/* Media Player */}
+                              <div className="monitor-response__player">
+                                {record.type === 'audio' ? (
+                                  <audio controls className="monitor-audio">
+                                    <source src={`${API_BASE}/${record.path}`} />
+                                  </audio>
+                                ) : (
+                                  <video controls className="monitor-video">
+                                    <source src={`${API_BASE}/${record.path}`} />
+                                  </video>
+                                )}
+                              </div>
+
+                              {/* Transcript */}
+                              {record.transcript && (
+                                <div className="monitor-response__transcript">
+                                  <label>Transcript</label>
+                                  <p>"{record.transcript}"</p>
+                                </div>
+                              )}
+
+                              {/* AI Analysis */}
+                              {record.analysisJson ? (
+                                <AIAnalysisCard analysis={record.analysisJson} />
                               ) : (
-                                <video controls className="monitor-video">
-                                  <source src={`${API_BASE}/${record.path}`} />
-                                </video>
+                                <div className="monitor-response__processing">
+                                  <LoadingSpinner size="sm" />
+                                  <span>Processing AI analysis...</span>
+                                </div>
                               )}
                             </div>
-
-                            {/* Transcript */}
-                            {record.transcript && (
-                              <div className="monitor-response__transcript">
-                                <label>Transcript</label>
-                                <p>"{record.transcript}"</p>
-                              </div>
-                            )}
-
-                            {/* AI Analysis */}
-                            {record.analysisJson ? (
-                              <AIAnalysisCard analysis={record.analysisJson} />
-                            ) : (
-                              <div className="monitor-response__processing">
-                                <LoadingSpinner size="sm" />
-                                <span>Processing AI analysis...</span>
-                              </div>
-                            )}
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </>
                     )}
                   </div>
                 </>

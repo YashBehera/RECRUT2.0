@@ -258,7 +258,7 @@ app.get('/api/interviews/:id/config', async (req: Request, res: Response) => {
     // Append any questions that were added dynamically (like AI follow-ups)
     // Only include questions that aren't already in the list to avoid duplicates
     const existingIds = new Set(questions.map(q => q.id));
-    const dynamicQuestions = cfg.questions.filter(q => !existingIds.has(q.id));
+    const dynamicQuestions = cfg.questions.filter((q: any) => !existingIds.has(q.id));
     questions = [...questions, ...dynamicQuestions];
   }
 
@@ -826,6 +826,57 @@ app.post('/api/interviews/:id/reference/voice', upload.single('audio'), async (r
     data: { referenceVoicePath: relPath }
   });
   res.json({ ok: true, path: relPath });
+});
+
+// ======================
+// Stress metrics (store & retrieve)
+// ======================
+// Append or set stress metrics for an interview
+app.post('/api/interviews/:id/stress', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const metrics = req.body?.metrics;
+
+  if (!metrics || !Array.isArray(metrics)) {
+    return res.status(400).json({ error: 'metrics (array) required in body' });
+  }
+
+  try {
+    const interview = await prisma.interview.findUnique({ where: { id }, select: { stressMetrics: true } });
+
+    let existing: any[] = [];
+    if (interview?.stressMetrics) {
+      try {
+        existing = Array.isArray(interview.stressMetrics) ? interview.stressMetrics as any[] : [];
+      } catch (e) {
+        existing = [];
+      }
+    }
+
+    const updated = [...existing, ...metrics];
+
+    await prisma.interview.update({
+      where: { id },
+      data: { stressMetrics: updated }
+    });
+
+    res.json({ ok: true, count: updated.length });
+  } catch (err: any) {
+    console.error('Failed to save stress metrics:', err);
+    res.status(500).json({ error: err.message || 'Failed to save' });
+  }
+});
+
+// Retrieve stress metrics for an interview
+app.get('/api/interviews/:id/stress', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const interview = await prisma.interview.findUnique({ where: { id }, select: { stressMetrics: true } });
+    const metrics = interview?.stressMetrics || [];
+    res.json({ ok: true, metrics });
+  } catch (err: any) {
+    console.error('Failed to fetch stress metrics:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch' });
+  }
 });
 
 // Code Execution Engine (IDE Support)

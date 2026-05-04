@@ -57,6 +57,9 @@ model Interview {
   // [NEW] Stores parsed resume (Skills, Experience, Projects)
   resumeData     Json?
 
+  // [NEW] Real-time stress & cognitive load detection metrics
+  stressMetrics  Json?    // Array of StressState objects with timestamp history
+
   interviewerId  String?
   interviewer    User?    @relation("InterviewerUser", fields: [interviewerId], references: [id])
   
