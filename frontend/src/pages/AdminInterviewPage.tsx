@@ -480,18 +480,30 @@ export function AdminInterviewPage() {
   const conversationLog = interview.customConfig?.conversationLog || interview.template?.config?.conversationLog || [];
   const candidateTurns = conversationLog.filter(turn => turn.role === 'candidate');
   const totalResponses = responses.length + candidateTurns.length;
-  
-  // Match answers to questions using questionIndex (new) or fallback to sequence matching (legacy)
-  const questionAnswerPairs: QuestionAnswer[] = questions.map((question, index) => {
-    // First, try to find answer by questionIndex (new approach)
-    let answer = candidateTurns.find(turn => turn.questionIndex === index);
-    // Fallback: if no index match, use sequence matching for legacy interviews
-    if (!answer && candidateTurns.length > 0) {
-      answer = candidateTurns[index] || null;
+  const candidateTurnsByQuestionIndex = new Map<number, ConversationTurn>();
+  const orderedCandidateTurns = [...candidateTurns].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+
+  candidateTurns.forEach((turn) => {
+    if (typeof turn.questionIndex === 'number') {
+      candidateTurnsByQuestionIndex.set(turn.questionIndex, turn);
     }
+  });
+
+  const hasContiguousQuestionIndices = orderedCandidateTurns.every(
+    (turn, index) => turn.questionIndex === index
+  );
+
+  // Prefer explicit questionIndex when it is contiguous; otherwise pair by chronology.
+  const questionAnswerPairs: QuestionAnswer[] = questions.map((question, index) => {
+    const answer = hasContiguousQuestionIndices
+      ? candidateTurnsByQuestionIndex.get(index) || null
+      : orderedCandidateTurns[index] || null;
+
     return {
       question,
-      answer: answer || null,
+      answer,
     };
   });
 

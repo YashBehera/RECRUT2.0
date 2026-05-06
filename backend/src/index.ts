@@ -409,7 +409,14 @@ app.get('/api/admin/interviews/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   const interview = await prisma.interview.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      candidateName: true,
+      candidateEmail: true,
+      candidateId: true,
+      status: true,
+      suspicionScore: true,
+      customConfig: true,
       template: true,
       proctorEvents: { orderBy: { createdAt: 'asc' } },
       mediaRecords: true,
@@ -616,6 +623,23 @@ app.put('/api/admin/interviews/:id', authMiddleware, requireRole('INTERVIEWER'),
   try {
     const dt = scheduledAt ? new Date(scheduledAt) : null;
 
+    const existingInterview = await prisma.interview.findUnique({
+      where: { id },
+      select: { customConfig: true },
+    });
+
+    const currentCustomConfig = (existingInterview?.customConfig as Record<string, unknown> | null) || {};
+    const nextCustomConfig =
+      customConfig === undefined
+        ? currentCustomConfig
+        : {
+            ...currentCustomConfig,
+            ...(customConfig || {}),
+            conversationLog:
+              (customConfig as Record<string, unknown> | undefined)?.conversationLog ??
+              currentCustomConfig.conversationLog,
+          };
+
     const iv = await prisma.interview.update({
       where: { id },
       data: {
@@ -625,7 +649,7 @@ app.put('/api/admin/interviews/:id', authMiddleware, requireRole('INTERVIEWER'),
         templateId,
         scheduledAt: dt,
         status,
-        customConfig: customConfig ?? undefined, // Update if provided
+        customConfig: customConfig === undefined ? undefined : nextCustomConfig,
       },
     });
     res.json(iv);

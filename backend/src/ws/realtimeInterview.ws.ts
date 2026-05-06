@@ -527,6 +527,9 @@ async function saveConversationLog(interviewId: string, role: "candidate" | "ai"
     if (interview) {
       const currentConfig = (interview.customConfig as any) || (interview.template?.config as any) || {};
       const currentLog = currentConfig.conversationLog || [];
+      const candidateQuestionIndex = role === 'candidate'
+        ? currentLog.filter((turn: any) => turn.role === 'candidate').length
+        : undefined;
 
       await prisma.interview.update({
         where: { id: interviewId },
@@ -539,7 +542,7 @@ async function saveConversationLog(interviewId: string, role: "candidate" | "ai"
                 role,
                 text,
                 timestamp: new Date().toISOString(),
-                ...(role === 'candidate' && questionIndex !== undefined && { questionIndex })
+                ...(role === 'candidate' && { questionIndex: candidateQuestionIndex ?? questionIndex })
               }
             ]
           }
